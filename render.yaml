@@ -2,10 +2,9 @@ services:
   - type: web
     name: landing-app
     runtime: node
-    env: node
     rootDir: landing-app
-    buildCommand: cd landing-app && npm install && npm run build
-    startCommand: cd landing-app && npm start
+    buildCommand: npm install && npm run build
+    startCommand: npm start
     plan: starter
     envVars:
       - key: NODE_ENV
