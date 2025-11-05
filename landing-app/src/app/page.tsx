@@ -135,21 +135,28 @@ export default function Home() {
           <div className="flex flex-col gap-4 sm:flex-row">
             <Link
               href="#chat"
-              className="inline-flex items-center justify-center rounded-full bg-gradient-cta px-8 py-3 text-base font-semibold text-neo-night shadow-neon transition hover:-translate-y-1 hover:shadow-neon-soft"
+              className="group relative inline-flex items-center justify-center gap-2 overflow-hidden rounded-full bg-gradient-cta px-10 py-4 text-lg font-bold text-neo-night shadow-[0_0_30px_rgba(255,95,141,0.5)] transition-all hover:-translate-y-1 hover:shadow-[0_0_40px_rgba(255,95,141,0.7)] hover:scale-105"
             >
-              Написать в чат
+              <span className="relative z-10">💬 Попробовать бесплатно</span>
+              <div className="absolute inset-0 animate-pulse bg-gradient-to-r from-transparent via-white/20 to-transparent" />
             </Link>
             <Link
               href="#how"
-              className="inline-flex items-center justify-center rounded-full border border-white/20 px-8 py-3 text-base font-semibold text-white transition hover:border-neo-electric hover:text-neo-electric"
+              className="inline-flex items-center justify-center rounded-full border-2 border-white/30 px-8 py-4 text-base font-semibold text-white backdrop-blur-sm transition hover:border-neo-electric hover:bg-white/5 hover:text-neo-electric"
             >
               Как это работает
             </Link>
           </div>
-          <div className="flex flex-wrap gap-6 text-sm text-white/60">
-            <span className="flex items-center gap-2">⚡ Бесплатно</span>
-            <span className="flex items-center gap-2">🛡️ Без регистрации</span>
-            <span className="flex items-center gap-2">🧠 Обновляемая база КТРУ</span>
+          <div className="flex flex-wrap gap-4">
+            <span className="flex items-center gap-2 rounded-full border border-neo-electric/30 bg-neo-electric/10 px-4 py-2 text-sm font-medium text-neo-electric">
+              ⚡ Бесплатно
+            </span>
+            <span className="flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-4 py-2 text-sm text-white/70">
+              🛡️ Без регистрации
+            </span>
+            <span className="flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-4 py-2 text-sm text-white/70">
+              🧠 Обновляемая база КТРУ
+            </span>
           </div>
         </div>
         <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-8 shadow-neon-soft backdrop-blur-xl">
@@ -221,6 +228,15 @@ export default function Home() {
             </div>
           ))}
         </div>
+        <div className="flex justify-center pt-2">
+          <Link
+            href="#chat"
+            className="group inline-flex items-center gap-2 rounded-full border-2 border-neo-electric bg-neo-electric/10 px-6 py-2.5 text-sm font-semibold text-neo-electric backdrop-blur-sm transition hover:bg-neo-electric/20 hover:shadow-[0_0_20px_rgba(0,231,255,0.4)]"
+          >
+            <span>Попробовать прямо сейчас</span>
+            <span className="transition group-hover:translate-x-1">→</span>
+          </Link>
+        </div>
       </section>
 
       <section className="space-y-8">
@@ -242,6 +258,15 @@ export default function Home() {
             </div>
           ))}
         </div>
+        <div className="flex justify-center pt-4">
+          <Link
+            href="#chat"
+            className="group inline-flex items-center gap-2 rounded-full border-2 border-neo-electric bg-neo-electric/10 px-8 py-3 text-base font-semibold text-neo-electric backdrop-blur-sm transition hover:bg-neo-electric/20 hover:shadow-[0_0_20px_rgba(0,231,255,0.4)]"
+          >
+            <span>Попробовать решить вашу задачу</span>
+            <span className="transition group-hover:translate-x-1">→</span>
+          </Link>
+        </div>
       </section>
 
       <section className="space-y-8">
@@ -255,12 +280,21 @@ export default function Home() {
               key={item.quote}
               className="flex flex-col gap-4 rounded-3xl border border-white/10 bg-white/5 p-6 shadow-neon-soft backdrop-blur-xl"
             >
-              <blockquote className="text-sm text-white/80">“{item.quote}”</blockquote>
+              <blockquote className="text-sm text-white/80">"{item.quote}"</blockquote>
               <figcaption className="text-xs uppercase tracking-wider text-white/50">
                 {item.role}
               </figcaption>
             </figure>
           ))}
+        </div>
+        <div className="flex justify-center pt-4">
+          <Link
+            href="#chat"
+            className="group inline-flex items-center gap-2 rounded-full border-2 border-neo-electric bg-neo-electric/10 px-8 py-3 text-base font-semibold text-neo-electric backdrop-blur-sm transition hover:bg-neo-electric/20 hover:shadow-[0_0_20px_rgba(0,231,255,0.4)]"
+          >
+            <span>Попробовать самому</span>
+            <span className="transition group-hover:translate-x-1">→</span>
+          </Link>
         </div>
       </section>
 
@@ -301,14 +335,30 @@ export default function Home() {
             </details>
           ))}
         </div>
+        <div className="relative overflow-hidden rounded-3xl border-2 border-neo-electric/50 bg-gradient-to-br from-neo-electric/10 to-neo-glow/10 p-8 text-center shadow-[0_0_40px_rgba(0,231,255,0.3)] backdrop-blur-xl">
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent animate-pulse" />
+          <div className="relative space-y-4">
+            <h3 className="font-display text-2xl text-white">Готовы попробовать?</h3>
+            <p className="text-white/80">Начните прямо сейчас — это бесплатно и займёт меньше минуты</p>
+            <Link
+              href="#chat"
+              className="inline-flex items-center gap-2 rounded-full bg-gradient-cta px-10 py-4 text-lg font-bold text-neo-night shadow-[0_0_30px_rgba(255,95,141,0.5)] transition-all hover:-translate-y-1 hover:shadow-[0_0_40px_rgba(255,95,141,0.7)] hover:scale-105"
+            >
+              <span>💬 Начать чат с ботом</span>
+            </Link>
+          </div>
+        </div>
       </section>
 
       <section id="feedback" className="grid gap-10 md:grid-cols-[1fr_1fr]">
         <div className="space-y-4">
           <p className="text-sm uppercase tracking-[0.2em] text-white/40">Связаться</p>
           <h2 className="font-display text-3xl md:text-4xl">
-            Хотите внедрить ИИ-бота или попробовать на своём кейсе?
+            Единая платформа для всех участников закупочного процесса
           </h2>
+          <p className="text-lg text-white/80 font-medium">
+            От инициатора до руководителя — автоматизируйте весь закупочный процесс
+          </p>
           <p className="text-sm text-white/70">
             Расскажите, что планируете автоматизировать. Отправим сценарии запуска, подключим пилот и поможем с обучением команды.
           </p>

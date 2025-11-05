@@ -131,9 +131,14 @@ export const FeedbackForm = () => {
       <button
         type="submit"
         disabled={state === "submitting"}
-        className="mt-6 inline-flex items-center justify-center rounded-full bg-gradient-cta px-8 py-3 text-base font-semibold text-neo-night transition hover:opacity-90 disabled:cursor-progress disabled:opacity-60"
+        className="group relative mt-6 inline-flex items-center justify-center gap-2 overflow-hidden rounded-full bg-gradient-cta px-10 py-4 text-base font-bold text-neo-night shadow-[0_0_30px_rgba(255,95,141,0.5)] transition-all hover:-translate-y-1 hover:shadow-[0_0_40px_rgba(255,95,141,0.7)] hover:scale-105 disabled:cursor-progress disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:scale-100"
       >
-        {state === "submitting" ? "Отправляем…" : "Получить личный разбор"}
+        <span className="relative z-10">
+          {state === "submitting" ? "Отправляем…" : "🚀 Получить личный разбор"}
+        </span>
+        {state !== "submitting" && (
+          <div className="absolute inset-0 animate-pulse bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+        )}
       </button>
     </form>
   );

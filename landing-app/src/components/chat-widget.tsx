@@ -158,9 +158,10 @@ export const ChatWidget = () => {
       <button
         type="button"
         onClick={handleToggle}
-        className="fixed bottom-6 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-cta text-black shadow-neon transition-transform duration-500 hover:scale-105 focus:outline-none focus:ring-4 focus:ring-neo-electric/40 md:h-16 md:w-16"
+        className="group fixed bottom-6 right-6 z-40 flex h-14 w-14 items-center justify-center gap-1.5 overflow-hidden rounded-full bg-gradient-cta text-black shadow-[0_0_30px_rgba(255,95,141,0.6)] transition-all duration-300 hover:scale-110 hover:shadow-[0_0_40px_rgba(255,95,141,0.8)] focus:outline-none focus:ring-4 focus:ring-neo-electric/40 md:h-16 md:w-16"
       >
-        <span className="text-2xl">🤖</span>
+        <span className="relative z-10 text-2xl">💬</span>
+        <div className="absolute inset-0 animate-pulse bg-gradient-to-r from-transparent via-white/20 to-transparent" />
       </button>
 
       {isOpen && (
