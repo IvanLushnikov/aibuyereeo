@@ -465,16 +465,10 @@ export const ChatWidget = () => {
           return;
         }
         console.error("initial chat error", error);
-        if (!controller.signal.aborted) {
-          setMessages([
-            {
-              id: uuid(),
-              role: "agent",
-              content: fallbackReply,
-              timestamp: Date.now(),
-            },
-          ]);
-        }
+        // НЕ добавляем fallback сообщение в историю при ошибке инициализации
+        // Это предотвратит отправку ошибки в n8n при следующем запросе
+        // Просто оставляем messages пустым - пользователь увидит пустой чат
+        // и сможет попробовать снова
       } finally {
         if (!controller.signal.aborted) {
           setIsThinking(false);
@@ -527,6 +521,19 @@ export const ChatWidget = () => {
     setIsThinking(true);
 
     try {
+      // Фильтруем fallback сообщения из истории перед отправкой
+      // Это предотвратит отправку ошибок в n8n
+      const cleanHistory = updatedHistory
+        .filter((m) => {
+          // Пропускаем сообщения агента, которые являются fallback сообщениями
+          if (m.role === "agent" && m.content === fallbackReply) {
+            return false;
+          }
+          return true;
+        })
+        .map((m) => ({ role: m.role, content: m.content }))
+        .slice(-10);
+
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -534,9 +541,7 @@ export const ChatWidget = () => {
           clientId: id,
           sessionId,
           message: value,
-          history: updatedHistory
-            .map((m) => ({ role: m.role, content: m.content }))
-            .slice(-10),
+          history: cleanHistory,
           meta: { source: "landing", openedAt: messages[0]?.timestamp },
         }),
         signal: controller.signal,
