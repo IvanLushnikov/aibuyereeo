@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: landing-app
+    env: node
+    rootDir: landing-app
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    plan: starter
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: LOGS_ROOT
+        value: /data/logs
+      - key: N8N_WEBHOOK_URL
+        sync: false
+      - key: N8N_SECRET
+        sync: false
+      - key: CHAT_TIMEOUT_MS
+        value: 25000
+      - key: RATE_LIMIT_WINDOW_SEC
+        value: 3600
+      - key: RATE_LIMIT_MAX_REQUESTS
+        value: 20
+    disk:
+      name: logs-disk
+      mountPath: /data
+      sizeGB: 2
+    healthCheckPath: /api/health
+
