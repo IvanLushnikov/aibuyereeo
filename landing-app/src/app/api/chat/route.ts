@@ -355,6 +355,8 @@ export async function POST(request: Request) {
           : "ИИ‑бот временно недоступен. Попробуйте позже.",
         latencyMs: 0,
         status: "error",
+        reason: "circuit_breaker_open",
+        circuitBreakerState: circuitBreakerState,
       }, { status: 200 });
     }
 
@@ -456,6 +458,8 @@ export async function POST(request: Request) {
         reply: replyText,
         latencyMs,
         status,
+        ...(n8nError ? { error: n8nError.slice(0, 200) } : {}),
+        ...(n8nResponseStatus ? { n8nStatus: n8nResponseStatus } : {}),
       },
       { status: 200 }
     );
