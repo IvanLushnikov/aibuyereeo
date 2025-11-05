@@ -396,7 +396,7 @@ export const ChatWidget = () => {
       // Устанавливаем флаг инициализации сразу для предотвращения race condition
       initializationRef.current = true;
       setHasInitialized(true);
-      setIsThinking(true);
+      // НЕ показываем статус thinking сразу - только после начала запроса
       
       // Убеждаемся, что clientId установлен перед отправкой
       const id = getClientId();
@@ -412,6 +412,9 @@ export const ChatWidget = () => {
       // Создаем новый AbortController для этого запроса
       const controller = new AbortController();
       abortControllerRef.current = controller;
+      
+      // Показываем статус thinking только после начала запроса
+      setIsThinking(true);
       
       try {
         const response = await fetch("/api/chat", {
@@ -487,10 +490,12 @@ export const ChatWidget = () => {
     }
   }, [isOpen, hasOpened, hasInitialized, messages.length, isThinking, getClientId, trackEvent, sessionId]);
 
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement> | React.KeyboardEvent<HTMLInputElement>) => {
     event.preventDefault();
     const value = input.trim();
-    if (!value || isThinking) return; // Предотвращаем двойную отправку
+    if (!value || isThinking) {
+      return; // Предотвращаем двойную отправку
+    }
 
     const id = getClientId();
     
@@ -713,6 +718,17 @@ export const ChatWidget = () => {
               <input
                 value={input}
                 onChange={(event) => setInput(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" && !event.shiftKey) {
+                    event.preventDefault();
+                    if (!isThinking && input.trim()) {
+                      const form = event.currentTarget.closest('form');
+                      if (form) {
+                        form.requestSubmit();
+                      }
+                    }
+                  }
+                }}
                 className="flex-1 rounded-xl border border-white/10 bg-white/5 px-5 py-4 text-base text-white placeholder:text-white/40 focus:border-neo-electric focus:outline-none focus:ring-2 focus:ring-neo-electric/30"
                 placeholder="Опишите, что хотите купить (простыми словами)…"
                 maxLength={2000}

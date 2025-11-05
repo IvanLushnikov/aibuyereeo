@@ -254,8 +254,8 @@ export default function Home() {
                   Боль
                 </p>
                 <h3 className="mt-3 font-display text-2xl font-bold text-white">{item.pain}</h3>
-                <div className="mt-6 flex items-start gap-3">
-                  <span className="mt-1 text-2xl">→</span>
+                <div className="mt-6 flex items-baseline gap-3">
+                  <span className="text-2xl leading-none">→</span>
                   <p className="text-base leading-relaxed text-white/80">{item.solution}</p>
                 </div>
               </div>
