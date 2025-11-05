@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { appendChatLog } from "@/lib/log-service";
+import { LRUCache } from "@/lib/lru-cache";
 
 type ChatHistoryItem = {
   role: "user" | "agent";
@@ -7,92 +8,38 @@ type ChatHistoryItem = {
 };
 
 const FALLBACK_REPLY =
-  "ИИ-бот сейчас перегружен. Попробуйте отправить запрос ещё раз через минуту.";
+  "ИИ‑бот сейчас перегружен. Попробуйте отправить запрос ещё раз через минуту.";
 
 type RateState = {
   count: number;
   windowStart: number;
 };
 
-const rateLimitStore = new Map<string, RateState>();
+// Используем LRU cache для предотвращения утечек памяти
+const rateLimitStore = new LRUCache<string, RateState>(
+  Number(process.env.RATE_LIMIT_MAX_STORE_SIZE ?? 10000)
+);
 const WINDOW_MS = Number(process.env.RATE_LIMIT_WINDOW_SEC ?? 3600) * 1000;
 const MAX_REQUESTS = Number(process.env.RATE_LIMIT_MAX_REQUESTS ?? 20);
-const MAX_STORE_SIZE = Number(process.env.RATE_LIMIT_MAX_STORE_SIZE ?? 10000); // Ограничение размера Map
-const CLEANUP_INTERVAL_MS = 3600000; // 1 час
 
-// Очистка старых записей rate limit для предотвращения утечек памяти
-function cleanupRateLimitStore() {
-  const now = Date.now();
-  const entriesToDelete: string[] = [];
-  
-  for (const [clientId, state] of rateLimitStore.entries()) {
-    if (now - state.windowStart > WINDOW_MS) {
-      entriesToDelete.push(clientId);
-    }
-  }
-  
-  // Удаляем устаревшие записи
-  for (const clientId of entriesToDelete) {
-    rateLimitStore.delete(clientId);
-  }
-  
-  // Если размер все еще превышает лимит, удаляем самые старые записи
-  if (rateLimitStore.size > MAX_STORE_SIZE) {
-    const sortedEntries = Array.from(rateLimitStore.entries())
-      .sort((a, b) => a[1].windowStart - b[1].windowStart);
-    
-    const toRemove = sortedEntries.slice(0, rateLimitStore.size - MAX_STORE_SIZE);
-    for (const [clientId] of toRemove) {
-      rateLimitStore.delete(clientId);
-    }
-  }
-}
-
-// Ленивая инициализация интервала очистки (для serverless)
-let cleanupInterval: NodeJS.Timeout | null = null;
 let cleanupCounter = 0;
-
-function ensureCleanupInterval() {
-  // В serverless окружении не запускаем интервал на уровне модуля
-  // Используем только периодическую очистку при запросах
-  if (typeof process !== 'undefined' && process.env.VERCEL) {
-    // В Vercel/serverless не используем глобальный интервал
-    return;
-  }
-  
-  if (!cleanupInterval) {
-    cleanupInterval = setInterval(() => {
-      cleanupRateLimitStore();
-    }, CLEANUP_INTERVAL_MS);
-  }
-}
-
-// Инициализируем интервал только если не в serverless
-if (typeof process !== 'undefined' && !process.env.VERCEL) {
-  ensureCleanupInterval();
-}
 
 function isRateLimited(clientId: string) {
   const now = Date.now();
   
-  // Периодическая очистка при каждом 100-м запросе
+  // Периодическая очистка старых записей при каждом 100-м запросе
   cleanupCounter++;
   if (cleanupCounter % 100 === 0) {
-    cleanupRateLimitStore();
-  }
-  
-  // Если хранилище переполнено, сначала очищаем
-  if (rateLimitStore.size >= MAX_STORE_SIZE) {
-    cleanupRateLimitStore();
+    const cleaned = rateLimitStore.cleanupOlderThan(WINDOW_MS);
+    if (cleaned > 0) {
+      console.log(`[RateLimit] Очищено ${cleaned} устаревших записей`);
+    }
   }
 
   const state = rateLimitStore.get(clientId);
 
   if (!state || now - state.windowStart > WINDOW_MS) {
-    // Проверяем размер перед добавлением новой записи
-    if (rateLimitStore.size >= MAX_STORE_SIZE) {
-      cleanupRateLimitStore();
-    }
+    // Новое окно - сбрасываем счетчик
     rateLimitStore.set(clientId, { count: 1, windowStart: now });
     return false;
   }
@@ -101,6 +48,7 @@ function isRateLimited(clientId: string) {
     return true;
   }
 
+  // Увеличиваем счетчик и обновляем запись
   state.count += 1;
   rateLimitStore.set(clientId, state);
   return false;
@@ -200,6 +148,81 @@ export async function POST(request: Request) {
       });
     }
 
+    // Используем polling вместо webhook (только если явно включен)
+    const usePolling = process.env.USE_POLLING === "true";
+    
+    if (usePolling) {
+      // Добавляем в очередь
+      const queueResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/api/chat/queue`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          clientId,
+          message,
+          history,
+          meta: { ...meta, receivedAt: receivedAt.toISOString() },
+        }),
+      });
+
+      if (!queueResponse.ok) {
+        console.error("[API] Ошибка добавления в очередь");
+        return NextResponse.json(
+          {
+            reply: FALLBACK_REPLY,
+            status: "error",
+          },
+          { status: 200 }
+        );
+      }
+
+      const queueData = await queueResponse.json();
+      const messageId = queueData.id;
+
+      // Polling результата (максимум 30 секунд)
+      const maxWaitTime = 30000;
+      const pollInterval = 500; // 500ms
+      const startTime = Date.now();
+
+      while (Date.now() - startTime < maxWaitTime) {
+        await new Promise((resolve) => setTimeout(resolve, pollInterval));
+
+        const resultResponse = await fetch(
+          `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/api/chat/result?messageId=${messageId}`
+        );
+
+        if (resultResponse.ok) {
+          const result = await resultResponse.json();
+          
+          await appendChatLog({
+            timestamp: new Date().toISOString(),
+            clientId,
+            direction: "agent",
+            message: result.reply,
+            latencyMs: result.latencyMs || Date.now() - startTime,
+            status: result.status || "ok",
+            meta: { ...meta, messageId, source: "polling" },
+          });
+
+          return NextResponse.json({
+            reply: result.reply,
+            latencyMs: result.latencyMs || Date.now() - startTime,
+            status: result.status || "ok",
+          });
+        }
+      }
+
+      // Таймаут
+      return NextResponse.json(
+        {
+          reply: "ИИ‑бот слишком долго думает. Попробуйте ещё раз.",
+          latencyMs: maxWaitTime,
+          status: "error",
+        },
+        { status: 200 }
+      );
+    }
+
+    // Старый способ через webhook (если USE_POLLING=false и есть N8N_WEBHOOK_URL)
     const webhookUrl = process.env.N8N_WEBHOOK_URL;
     const secret = process.env.N8N_SECRET;
 
@@ -264,6 +287,7 @@ export async function POST(request: Request) {
       historyLength: history.length,
       isInitial,
       hasSecret: !!secret,
+      payload: JSON.stringify(n8nPayload).slice(0, 200), // Первые 200 символов payload для отладки
     });
 
     let replyText = FALLBACK_REPLY;
@@ -275,6 +299,18 @@ export async function POST(request: Request) {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
+      console.log(`[API] 🔍 Детальный запрос к n8n для ${clientId}:`, {
+        url: webhookUrl.replace(/\/[^\/]*$/, '/***'),
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(secret ? { "x-n8n-secret": "***" } : {}),
+        },
+        payloadSize: JSON.stringify(n8nPayload).length,
+        payloadPreview: JSON.stringify(n8nPayload).slice(0, 100),
+      });
+
+      const fetchStartTime = Date.now();
       const response = await fetch(webhookUrl, {
         method: "POST",
         headers: {
@@ -285,50 +321,89 @@ export async function POST(request: Request) {
         signal: controller.signal,
       });
 
+      const fetchTime = Date.now() - fetchStartTime;
       clearTimeout(timeoutId);
       n8nResponseStatus = response.status;
+      
+      console.log(`[API] 📥 Ответ от n8n для ${clientId}:`, {
+        status: response.status,
+        statusText: response.statusText,
+        fetchTime: `${fetchTime}ms`,
+        headers: Object.fromEntries(response.headers.entries()),
+      });
 
       if (!response.ok) {
         const errorBody = await response.text().catch(() => '');
         console.error(`[API] n8n webhook вернул ошибку ${response.status}:`, errorBody.slice(0, 500));
-        throw new Error(`n8n webhook failed with status ${response.status}: ${errorBody.slice(0, 200)}`);
-      }
-
-      const data = await response.json().catch((parseError) => {
-        const text = response.text().catch(() => '');
-        console.error("[API] Ошибка парсинга ответа от n8n:", parseError);
-        return { _parseError: true, _rawResponse: text };
-      });
-
-      // Обработка разных форматов ответов от n8n
-      if (data._parseError) {
-        console.error("[API] n8n вернул не-JSON ответ:", data._rawResponse?.slice(0, 200));
-        replyText = FALLBACK_REPLY;
-        status = "fallback";
+        
+        // Извлекаем сообщение об ошибке из ответа n8n
+        let errorMessage = `Ошибка n8n (статус ${response.status})`;
+        try {
+          const errorData = JSON.parse(errorBody);
+          if (errorData.message) {
+            errorMessage = errorData.message;
+          }
+        } catch {
+          // Если не удалось распарсить, используем дефолтное сообщение
+        }
+        
+        // Для 404 и 500 возвращаем понятное сообщение
+        if (response.status === 404) {
+          // Проверяем есть ли в сообщении подсказка про активацию
+          if (errorMessage.includes("must be active") || errorMessage.includes("not registered")) {
+            replyText = `ИИ‑бот не настроен: Workflow не активирован в n8n. Включите переключатель "Active" в правом верхнем углу редактора n8n.`;
+          } else {
+            replyText = `ИИ‑бот не настроен: Workflow не найден в n8n. Проверьте URL webhook.`;
+          }
+        } else if (response.status === 500) {
+          replyText = `ИИ‑бот временно недоступен: ${errorMessage}. Проверьте настройки workflow в n8n.`;
+        } else {
+          replyText = `ИИ‑бот вернул ошибку: ${errorMessage}. Обратитесь к администратору.`;
+        }
+        
+        status = "error";
+        n8nResponseStatus = response.status;
+        n8nError = errorMessage;
+        
+        // Пропускаем обработку ответа и переходим к логированию
       } else {
-        // Пробуем разные поля в ответе
-        replyText =
-          typeof data?.reply === "string" && data.reply.trim()
-            ? data.reply
-            : typeof data?.answer === "string" && data.answer.trim()
-              ? data.answer
-              : typeof data?.text === "string" && data.text.trim()
-                ? data.text
-                : typeof data?.message === "string" && data.message.trim()
-                  ? data.message
-                  : FALLBACK_REPLY;
-
-        status = replyText === FALLBACK_REPLY ? "fallback" : "ok";
-
-        console.log(`[API] Получен ответ от n8n для ${clientId}:`, {
-          status: response.status,
-          replyLength: replyText.length,
-          hasReply: !!data?.reply,
-          hasAnswer: !!data?.answer,
-          hasText: !!data?.text,
-          hasMessage: !!data?.message,
-          responseKeys: Object.keys(data || {}),
+        // Обрабатываем успешный ответ только если response.ok = true
+        const data = await response.json().catch((parseError) => {
+          const text = response.text().catch(() => '');
+          console.error("[API] Ошибка парсинга ответа от n8n:", parseError);
+          return { _parseError: true, _rawResponse: text };
         });
+
+        // Обработка разных форматов ответов от n8n
+        if (data._parseError) {
+          console.error("[API] n8n вернул не-JSON ответ:", data._rawResponse?.slice(0, 200));
+          replyText = FALLBACK_REPLY;
+          status = "fallback";
+        } else {
+          // Пробуем разные поля в ответе
+          replyText =
+            typeof data?.reply === "string" && data.reply.trim()
+              ? data.reply
+              : typeof data?.answer === "string" && data.answer.trim()
+                ? data.answer
+                : typeof data?.text === "string" && data.text.trim()
+                  ? data.text
+                  : typeof data?.message === "string" && data.message.trim()
+                    ? data.message
+                    : FALLBACK_REPLY;
+
+          status = replyText === FALLBACK_REPLY ? "fallback" : "ok";
+
+          console.log(`[API] Получен ответ от n8n для ${clientId}:`, {
+            status: response.status,
+            replyLength: replyText.length,
+            hasReply: !!data?.reply,
+            hasAnswer: !!data?.answer,
+            hasText: !!data?.text,
+            hasMessage: !!data?.message,
+            responseKeys: Object.keys(data || {}),
+          });
+        }
       }
     } catch (error) {
       const isAbortError = error instanceof Error && error.name === "AbortError";
@@ -345,7 +420,7 @@ export async function POST(request: Request) {
       // В данном случае таймаут устанавливается через setTimeout, поэтому считаем это таймаутом
       status = "error";
       replyText = isAbortError 
-        ? "ИИ-бот слишком долго думает. Попробуйте ещё раз или переформулируйте вопрос."
+        ? "ИИ‑бот слишком долго думает. Попробуйте ещё раз или переформулируйте вопрос."
         : FALLBACK_REPLY;
     }
 

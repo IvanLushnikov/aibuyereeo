@@ -95,3 +95,39 @@ function getClientIdFallback(): string | null {
   return memoryStorage.get(CLIENT_ID_KEY) || null;
 }
 
+/**
+ * Получает clientId с безопасным fallback для всех случаев
+ * Используется в компонентах для гарантированного получения ID
+ */
+export function getClientId(): string {
+  if (typeof window === "undefined") {
+    // SSR - возвращаем временный ID
+    return uuid();
+  }
+
+  // Пытаемся получить из localStorage
+  try {
+    const stored = window.localStorage.getItem(CLIENT_ID_KEY);
+    if (stored && stored.trim()) {
+      return stored;
+    }
+  } catch (error) {
+    // localStorage недоступен - продолжаем с fallback
+  }
+
+  // Пытаемся получить из cookie
+  const cookieValue = getCookie(CLIENT_ID_KEY);
+  if (cookieValue && cookieValue.trim()) {
+    return cookieValue;
+  }
+
+  // Пытаемся получить из memory storage
+  const memoryValue = getClientIdFallback();
+  if (memoryValue && memoryValue.trim()) {
+    return memoryValue;
+  }
+
+  // Генерируем новый ID
+  return ensureClientId();
+}
+

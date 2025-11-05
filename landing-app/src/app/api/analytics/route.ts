@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { appendEventLog } from "@/lib/log-service";
+import { RateLimiter } from "@/lib/rate-limit";
 
 const ALLOWED_EVENTS = new Set([
   "page_view",
@@ -10,6 +11,15 @@ const ALLOWED_EVENTS = new Set([
   "chat_error",
   "feedback_submitted",
 ]);
+
+// Rate limiting для analytics: максимум 100 событий в минуту на clientId
+const analyticsRateLimiter = new RateLimiter(
+  Number(process.env.ANALYTICS_RATE_LIMIT_MAX ?? 100),
+  Number(process.env.ANALYTICS_RATE_LIMIT_WINDOW_SEC ?? 60) * 1000,
+  Number(process.env.ANALYTICS_RATE_LIMIT_STORE_SIZE ?? 5000)
+);
+
+let cleanupCounter = 0;
 
 export async function POST(request: Request) {
   try {
@@ -49,6 +59,22 @@ export async function POST(request: Request) {
     // clientId не обязателен, но если передан - должен быть валидным
     if (body?.clientId !== undefined && !clientId) {
       console.warn("[Analytics] Empty clientId provided, continuing without it");
+    }
+
+    // Rate limiting для analytics (только если есть clientId)
+    if (clientId) {
+      cleanupCounter++;
+      if (cleanupCounter % 100 === 0) {
+        analyticsRateLimiter.cleanup();
+      }
+
+      if (analyticsRateLimiter.isLimited(clientId)) {
+        console.warn(`[Analytics] Rate limit exceeded for clientId: ${clientId.slice(0, 8)}...`);
+        return NextResponse.json(
+          { error: "Rate limit exceeded. Please try again later." },
+          { status: 429 }
+        );
+      }
     }
 
     // Ограничение размера payload для предотвращения проблем с памятью

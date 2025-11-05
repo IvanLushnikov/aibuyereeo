@@ -12,7 +12,7 @@ type Message = {
 };
 
 const fallbackReply =
-  "ИИ-бот сейчас перегружен. Попробуйте отправить запрос ещё раз через минуту.";
+  "ИИ‑бот сейчас перегружен. Попробуйте отправить запрос ещё раз через минуту.";
 
 // Валидация и санитизация URL для защиты от XSS
 const isValidUrl = (url: string): boolean => {
@@ -250,6 +250,7 @@ export const ChatWidget = () => {
   const [hasOpened, setHasOpened] = useState(false);
   const [input, setInput] = useState("");
   const [isThinking, setIsThinking] = useState(false);
+  const [thinkingStatus, setThinkingStatus] = useState<string>("");
   const [clientId, setClientId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [hasInitialized, setHasInitialized] = useState(false);
@@ -257,6 +258,19 @@ export const ChatWidget = () => {
   const initializationRef = useRef(false); // Для предотвращения race condition
 
   const sessionId = useMemo(() => uuid(), []);
+  const thinkingPhrases = useMemo<string[]>(
+    () => [
+      "Подбираем код…",
+      "Бежим в справочник…",
+      "Сверяем классификаторы…",
+      "Достаём чек‑листы…",
+      "Ищем лучшие совпадения…",
+      "Проверяем параметры…",
+      "Сопоставляем по ОКПД2…",
+      "Формируем параметры…",
+    ],
+    []
+  );
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -273,16 +287,52 @@ export const ChatWidget = () => {
     };
   }, []);
 
+  // Ротация статусов ожидания, пока isThinking === true
+  useEffect(() => {
+    let timer: NodeJS.Timeout | null = null;
+
+    const scheduleNext = () => {
+      // Выбираем случайную фразу и время 2–5 секунд
+      const nextStatus = thinkingPhrases[Math.floor(Math.random() * thinkingPhrases.length)];
+      setThinkingStatus(nextStatus);
+      const delay = 2000 + Math.floor(Math.random() * 3000);
+      timer = setTimeout(() => {
+        if (isThinking) scheduleNext();
+      }, delay);
+    };
+
+    if (isThinking) {
+      scheduleNext();
+    } else {
+      setThinkingStatus("");
+    }
+
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [isThinking, thinkingPhrases]);
+
   const getClientId = (): string => {
     // Если clientId уже установлен, используем его
     if (clientId && clientId.trim()) {
       return clientId;
     }
     
-    // Используем утилиту ensureClientId
-    const id = ensureClientId();
-    setClientId(id);
-    return id;
+    // Используем утилиту ensureClientId с fallback
+    try {
+      const id = ensureClientId();
+      if (id && id.trim()) {
+        setClientId(id);
+        return id;
+      }
+    } catch (error) {
+      console.warn("[ChatWidget] Ошибка получения clientId:", error);
+    }
+    
+    // Последний fallback: генерируем временный ID для сессии
+    const fallbackId = `temp-${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
+    setClientId(fallbackId);
+    return fallbackId;
   };
 
   const trackEvent = async (event: string, payload?: Record<string, unknown>) => {
@@ -540,32 +590,40 @@ export const ChatWidget = () => {
       <button
         type="button"
         onClick={handleToggle}
+        aria-label={isOpen ? "Закрыть чат" : "Открыть чат с ИИ‑ботом"}
+        aria-expanded={isOpen}
         className="group fixed bottom-6 right-6 z-40 flex items-center justify-center gap-2 overflow-hidden rounded-full bg-gradient-cta px-6 py-3 text-base font-bold text-neo-night shadow-[0_0_30px_rgba(255,95,141,0.6)] transition-all duration-300 hover:scale-105 hover:shadow-[0_0_40px_rgba(255,95,141,0.8)] focus:outline-none focus:ring-4 focus:ring-neo-electric/40 md:px-8 md:py-4 md:text-lg"
       >
-        <span className="relative z-10">🎯 Подобрать код</span>
+        <span className="relative z-10">🎯 Подобрать код КТРУ</span>
         <div className="absolute inset-0 animate-pulse bg-gradient-to-r from-transparent via-white/20 to-transparent" />
       </button>
 
       {isOpen && (
-        <div className="fixed bottom-24 right-6 z-40 flex h-[480px] w-[360px] flex-col overflow-hidden rounded-3xl border border-white/10 bg-neo-card/95 backdrop-blur-xl shadow-neon md:w-[400px]">
+        <div 
+          className="fixed bottom-24 right-6 z-40 flex h-[480px] w-[360px] flex-col overflow-hidden rounded-3xl border border-white/10 bg-neo-card/95 backdrop-blur-xl shadow-neon md:w-[400px]"
+          role="dialog"
+          aria-label="Чат с ИИ‑ботом"
+          aria-modal="false"
+        >
           <header className="flex items-center gap-3 border-b border-white/5 px-5 py-4">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-neo-glow/20 text-xl">
               🤖
             </div>
             <div>
-              <p className="font-display text-lg">ИИ-бот</p>
+              <p className="font-display text-lg">ИИ‑бот</p>
               <p className="text-sm text-white/60">
                 {isThinking ? "подбираю варианты…" : "онлайн"}
               </p>
             </div>
           </header>
-          <div className="flex flex-1 flex-col gap-3 overflow-y-auto px-5 py-4">
+          <div className="flex flex-1 flex-col gap-3 overflow-y-auto px-5 py-4" role="log" aria-live="polite" aria-label="Сообщения чата">
             {messages.map((message) => (
               <div
                 key={message.id}
                 className={`flex ${
                   message.role === "user" ? "justify-end" : "justify-start"
                 }`}
+                role={message.role === "user" ? "user-message" : "agent-message"}
               >
                 <div
                   className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed shadow-neon-soft ${
@@ -585,9 +643,9 @@ export const ChatWidget = () => {
               </div>
             ))}
             {isThinking && (
-              <div className="flex items-center gap-2 text-xs text-white/60">
+              <div className="flex items-center gap-2 text-xs text-white/60" role="status" aria-live="polite" aria-label="ИИ‑бот обрабатывает запрос">
                 <span className="h-2 w-2 animate-ping rounded-full bg-neo-electric" />
-                ИИ-бот думает…
+                {thinkingStatus || "Ищем ответ…"}
               </div>
             )}
           </div>
@@ -598,9 +656,9 @@ export const ChatWidget = () => {
                 value={input}
                 onChange={(event) => setInput(event.target.value)}
                 className="flex-1 rounded-full border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:border-neo-electric focus:outline-none"
-                placeholder="Опишите, что хотите купить…"
+                placeholder="Опишите, что хотите купить (простыми словами)…"
                 maxLength={2000}
-                aria-label="Сообщение для ИИ-бота"
+                aria-label="Сообщение для ИИ‑бота"
               />
               <button
                 type="submit"
