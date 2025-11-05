@@ -21,6 +21,9 @@ type N8NResponse = {
 
 type CircuitBreakerState = 'closed' | 'open' | 'half-open';
 
+// Глобальный экземпляр circuit breaker (singleton) для всех запросов
+let globalCircuitBreaker: CircuitBreaker | null = null;
+
 class CircuitBreaker {
   private failures = 0;
   private lastFailureTime = 0;
@@ -82,7 +85,19 @@ export class N8NClient {
     this.webhookUrl = webhookUrl;
     this.secret = secret;
     this.timeoutMs = Math.max(5000, Math.min(60000, timeoutMs)); // Валидация timeout
-    this.circuitBreaker = new CircuitBreaker();
+    
+    // Используем глобальный circuit breaker (singleton) для всех запросов
+    if (!globalCircuitBreaker) {
+      globalCircuitBreaker = new CircuitBreaker();
+    }
+    this.circuitBreaker = globalCircuitBreaker;
+  }
+  
+  // Статический метод для сброса circuit breaker (для тестирования)
+  static resetCircuitBreaker(): void {
+    if (globalCircuitBreaker) {
+      globalCircuitBreaker.reset();
+    }
   }
 
   /**
@@ -208,6 +223,20 @@ export class N8NClient {
         } catch {
           // Используем дефолтное сообщение
         }
+
+        // Для 404 добавляем информацию о том, что workflow может быть неактивен
+        if (response.status === 404) {
+          errorMessage = `404: ${errorMessage}. Возможно, workflow не активирован в n8n.`;
+        } else if (response.status === 500) {
+          errorMessage = `500: ${errorMessage}. Проверьте настройки workflow в n8n.`;
+        }
+
+        console.error(`[N8NClient] Ошибка от n8n (статус ${response.status}):`, {
+          status: response.status,
+          statusText: response.statusText,
+          errorBody: errorBody.slice(0, 500),
+          errorMessage,
+        });
 
         throw new Error(errorMessage);
       }

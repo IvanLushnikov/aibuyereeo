@@ -333,6 +333,30 @@ export async function POST(request: Request) {
 
     // Создаем клиент n8n
     const n8nClient = new N8NClient(webhookUrl, secret, timeoutMs);
+    
+    // Проверяем состояние circuit breaker перед запросом
+    const circuitBreakerState = n8nClient.getCircuitBreakerState();
+    if (circuitBreakerState === 'open') {
+      console.warn(`[API] Circuit breaker открыт для ${clientId}. Пропускаем запрос к n8n.`);
+      await appendChatLog({
+        timestamp: new Date().toISOString(),
+        clientId,
+        direction: "agent",
+        message: isInitial 
+          ? "ИИ‑бот временно недоступен. Попробуйте открыть чат через минуту."
+          : "ИИ‑бот временно недоступен. Попробуйте позже.",
+        status: "error",
+        meta: { ...meta, requestId, reason: "circuit_breaker_open", circuitBreakerState },
+      }).catch(() => {});
+      
+      return NextResponse.json({
+        reply: isInitial 
+          ? "ИИ‑бот временно недоступен. Попробуйте открыть чат через минуту."
+          : "ИИ‑бот временно недоступен. Попробуйте позже.",
+        latencyMs: 0,
+        status: "error",
+      }, { status: 200 });
+    }
 
     let replyText = FALLBACK_REPLY;
     let status: "ok" | "fallback" | "error" = "fallback";
@@ -340,10 +364,22 @@ export async function POST(request: Request) {
     let n8nError: string | null = null;
 
     try {
+      console.log(`[API] Отправка запроса к n8n для ${clientId} (isInitial: ${isInitial}):`, {
+        requestId,
+        webhookUrl: webhookUrl.replace(/\/[^\/]*$/, '/***'),
+        circuitBreakerState,
+      });
+      
       const result = await n8nClient.sendMessage(n8nPayload);
       replyText = result.reply;
       status = result.status;
       n8nResponseStatus = 200;
+      
+      console.log(`[API] Успешный ответ от n8n для ${clientId}:`, {
+        requestId,
+        replyLength: replyText.length,
+        status,
+      });
     } catch (error) {
       n8nError = error instanceof Error ? error.message : String(error);
       
@@ -357,21 +393,33 @@ export async function POST(request: Request) {
       status = "error";
 
       // Формируем понятное сообщение об ошибке
+      // Для инициализации показываем более дружелюбное сообщение
       if (n8nError.includes("Circuit breaker is open") || n8nError.includes("circuit breaker открыт")) {
-        replyText = "ИИ‑бот временно недоступен. Попробуйте позже.";
+        replyText = isInitial 
+          ? "ИИ‑бот временно недоступен. Попробуйте открыть чат через минуту."
+          : "ИИ‑бот временно недоступен. Попробуйте позже.";
       } else if (n8nError.includes("timeout") || n8nError.includes("AbortError")) {
-        replyText = "ИИ‑бот слишком долго думает. Попробуйте ещё раз или переформулируйте вопрос.";
+        replyText = isInitial
+          ? "ИИ‑бот не отвечает. Попробуйте открыть чат через минуту."
+          : "ИИ‑бот слишком долго думает. Попробуйте ещё раз или переформулируйте вопрос.";
       } else if (n8nError.includes("Payload too large")) {
         replyText = "Сообщение слишком большое. Попробуйте сократить текст или историю сообщений.";
         n8nResponseStatus = 413;
       } else if (n8nError.includes("404") || n8nError.includes("not found") || n8nError.includes("не найден")) {
-        replyText = "ИИ‑бот не настроен: Workflow не найден в n8n. Проверьте URL webhook.";
+        replyText = isInitial
+          ? "ИИ‑бот временно недоступен. Обратитесь к администратору."
+          : "ИИ‑бот не настроен: Workflow не найден в n8n. Проверьте URL webhook.";
         n8nResponseStatus = 404;
       } else if (n8nError.includes("500") || n8nError.includes("server error")) {
-        replyText = "ИИ‑бот временно недоступен. Проверьте настройки workflow в n8n.";
+        replyText = isInitial
+          ? "ИИ‑бот временно недоступен. Попробуйте открыть чат через минуту."
+          : "ИИ‑бот временно недоступен. Проверьте настройки workflow в n8n.";
         n8nResponseStatus = 500;
       } else {
-        replyText = FALLBACK_REPLY;
+        // Для неизвестных ошибок при инициализации показываем более дружелюбное сообщение
+        replyText = isInitial
+          ? "ИИ‑бот временно недоступен. Попробуйте открыть чат через минуту."
+          : FALLBACK_REPLY;
       }
     }
 
