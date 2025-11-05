@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { v4 as uuid } from "uuid";
 
 type Message = {
@@ -15,7 +15,7 @@ const fallbackReply =
 
 // Функция для рендеринга сообщения с поддержкой ссылок и форматирования
 const renderFormattedMessage = (content: string) => {
-  const parts: (string | JSX.Element)[] = [];
+  const parts: (string | React.ReactElement)[] = [];
   let remaining = content;
   let keyCounter = 0;
 
@@ -100,8 +100,8 @@ const renderFormattedMessage = (content: string) => {
   }
 
   // Обрабатываем форматирование в текстовых частях
-  const processFormatting = (text: string): (string | JSX.Element)[] => {
-    const result: (string | JSX.Element)[] = [];
+  const processFormatting = (text: string): (string | React.ReactElement)[] => {
+    const result: (string | React.ReactElement)[] = [];
     let pos = 0;
     const textLength = text.length;
 
