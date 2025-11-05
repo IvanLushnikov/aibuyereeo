@@ -380,23 +380,45 @@ export async function POST(request: Request) {
           replyText = FALLBACK_REPLY;
           status = "fallback";
         } else {
-          // Пробуем разные поля в ответе
-          replyText =
-            typeof data?.reply === "string" && data.reply.trim()
-              ? data.reply
-              : typeof data?.answer === "string" && data.answer.trim()
-                ? data.answer
-                : typeof data?.text === "string" && data.text.trim()
-                  ? data.text
-                  : typeof data?.message === "string" && data.message.trim()
-                    ? data.message
-                    : FALLBACK_REPLY;
+          // Функция для проверки, что строка не является необработанным шаблоном n8n
+          const isValidReply = (value: string): boolean => {
+            if (!value || typeof value !== "string") return false;
+            // Проверяем, что это не шаблон n8n (необработанный)
+            if (value.includes("{{") && value.includes("}}")) {
+              return false;
+            }
+            // Проверяем, что это не пустая строка после trim
+            return value.trim().length > 0;
+          };
 
-          status = replyText === FALLBACK_REPLY ? "fallback" : "ok";
+          // Пробуем разные поля в ответе
+          const rawReply = 
+            typeof data?.reply === "string" ? data.reply
+            : typeof data?.answer === "string" ? data.answer
+            : typeof data?.text === "string" ? data.text
+            : typeof data?.message === "string" ? data.message
+            : null;
+
+          // Проверяем, что ответ валиден и не является шаблоном
+          if (rawReply && isValidReply(rawReply)) {
+            replyText = rawReply;
+            status = "ok";
+          } else {
+            // Если ответ содержит шаблон или невалиден, это ошибка конфигурации n8n
+            console.error(`[API] n8n вернул необработанный шаблон или пустой ответ для ${clientId}:`, {
+              rawReply,
+              responseKeys: Object.keys(data || {}),
+              fullData: JSON.stringify(data).slice(0, 500),
+            });
+            replyText = "Ошибка конфигурации n8n: ответ содержит необработанный шаблон. Проверьте настройки 'Respond to Webhook' node.";
+            status = "error";
+          }
 
           console.log(`[API] Получен ответ от n8n для ${clientId}:`, {
             status: response.status,
             replyLength: replyText.length,
+            isValid: status === "ok",
+            rawReply: rawReply?.slice(0, 100),
             hasReply: !!data?.reply,
             hasAnswer: !!data?.answer,
             hasText: !!data?.text,

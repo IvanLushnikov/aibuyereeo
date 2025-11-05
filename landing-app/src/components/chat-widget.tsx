@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { v4 as uuid } from "uuid";
 import { ensureClientId } from "@/lib/client-id";
 
@@ -245,6 +245,15 @@ const renderFormattedMessage = (content: string) => {
   });
 };
 
+// Глобальный способ открытия чата извне компонента
+let openChatCallback: (() => void) | null = null;
+
+export const openChat = () => {
+  if (openChatCallback) {
+    openChatCallback();
+  }
+};
+
 export const ChatWidget = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [hasOpened, setHasOpened] = useState(false);
@@ -365,8 +374,8 @@ export const ChatWidget = () => {
     }
   };
 
-  const handleToggle = async () => {
-    const newIsOpen = !isOpen;
+  const handleToggle = useCallback(async (forceOpen?: boolean) => {
+    const newIsOpen = forceOpen !== undefined ? forceOpen : !isOpen;
     setIsOpen(newIsOpen);
     
     // Если закрываем чат, отменяем все активные запросы
@@ -476,7 +485,7 @@ export const ChatWidget = () => {
         }
       }
     }
-  };
+  }, [isOpen, hasOpened, hasInitialized, messages.length, isThinking, getClientId, trackEvent, sessionId]);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -585,6 +594,18 @@ export const ChatWidget = () => {
     }
   };
 
+  // Регистрируем callback для открытия чата извне
+  useEffect(() => {
+    openChatCallback = () => {
+      if (!isOpen) {
+        handleToggle(true);
+      }
+    };
+    return () => {
+      openChatCallback = null;
+    };
+  }, [isOpen, handleToggle]);
+
   return (
     <>
       <button
@@ -598,25 +619,55 @@ export const ChatWidget = () => {
         <div className="absolute inset-0 animate-pulse bg-gradient-to-r from-transparent via-white/20 to-transparent" />
       </button>
 
+      {/* Overlay для закрытия drawer */}
       {isOpen && (
-        <div 
-          className="fixed bottom-24 right-6 z-40 flex h-[480px] w-[360px] flex-col overflow-hidden rounded-3xl border border-white/10 bg-neo-card/95 backdrop-blur-xl shadow-neon md:w-[400px]"
-          role="dialog"
-          aria-label="Чат с ИИ‑ботом"
-          aria-modal="false"
-        >
-          <header className="flex items-center gap-3 border-b border-white/5 px-5 py-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-neo-glow/20 text-xl">
-              🤖
+        <div
+          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm transition-opacity"
+          onClick={handleToggle}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Drawer - боковая панель справа */}
+      <div
+        className={`fixed top-0 right-0 z-50 h-full w-full max-w-2xl transform transition-transform duration-300 ease-in-out ${
+          isOpen ? "translate-x-0" : "translate-x-full"
+        }`}
+        role="dialog"
+        aria-label="Чат с ИИ‑ботом"
+        aria-modal="true"
+      >
+        <div className="flex h-full w-full flex-col overflow-hidden border-l border-white/10 bg-neo-card/98 backdrop-blur-xl shadow-2xl">
+          {/* Header */}
+          <header className="flex items-center justify-between gap-3 border-b border-white/10 px-6 py-5">
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-neo-glow/20 text-2xl">
+                🤖
+              </div>
+              <div>
+                <p className="font-display text-xl font-bold">ИИ‑бот</p>
+                <p className="text-sm text-white/60">
+                  {isThinking ? "подбираю варианты…" : "онлайн"}
+                </p>
+              </div>
             </div>
-            <div>
-              <p className="font-display text-lg">ИИ‑бот</p>
-              <p className="text-sm text-white/60">
-                {isThinking ? "подбираю варианты…" : "онлайн"}
-              </p>
-            </div>
+            <button
+              type="button"
+              onClick={handleToggle}
+              aria-label="Закрыть чат"
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-white/5 text-xl text-white/70 transition hover:bg-white/10 hover:text-white"
+            >
+              ✕
+            </button>
           </header>
-          <div className="flex flex-1 flex-col gap-3 overflow-y-auto px-5 py-4" role="log" aria-live="polite" aria-label="Сообщения чата">
+
+          {/* Messages area */}
+          <div
+            className="flex flex-1 flex-col gap-4 overflow-y-auto px-6 py-6"
+            role="log"
+            aria-live="polite"
+            aria-label="Сообщения чата"
+          >
             {messages.map((message) => (
               <div
                 key={message.id}
@@ -626,10 +677,10 @@ export const ChatWidget = () => {
                 role={message.role === "user" ? "user-message" : "agent-message"}
               >
                 <div
-                  className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed shadow-neon-soft ${
+                  className={`max-w-[75%] rounded-2xl px-5 py-4 text-base leading-relaxed shadow-neon-soft ${
                     message.role === "user"
                       ? "bg-gradient-cta text-neo-night"
-                      : "bg-white/5 text-white"
+                      : "bg-white/10 text-white"
                   }`}
                 >
                   {message.role === "agent" ? (
@@ -643,34 +694,41 @@ export const ChatWidget = () => {
               </div>
             ))}
             {isThinking && (
-              <div className="flex items-center gap-2 text-xs text-white/60" role="status" aria-live="polite" aria-label="ИИ‑бот обрабатывает запрос">
+              <div
+                className="flex items-center gap-3 text-sm text-white/70"
+                role="status"
+                aria-live="polite"
+                aria-label="ИИ‑бот обрабатывает запрос"
+              >
                 <span className="h-2 w-2 animate-ping rounded-full bg-neo-electric" />
                 {thinkingStatus || "Ищем ответ…"}
               </div>
             )}
           </div>
-          <form onSubmit={handleSubmit} className="border-t border-white/5 bg-neo-card/60 p-4">
+
+          {/* Input form */}
+          <form onSubmit={handleSubmit} className="border-t border-white/10 bg-neo-card/80 p-6">
             <input type="hidden" name="sessionId" value={sessionId} />
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               <input
                 value={input}
                 onChange={(event) => setInput(event.target.value)}
-                className="flex-1 rounded-full border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:border-neo-electric focus:outline-none"
+                className="flex-1 rounded-xl border border-white/10 bg-white/5 px-5 py-4 text-base text-white placeholder:text-white/40 focus:border-neo-electric focus:outline-none focus:ring-2 focus:ring-neo-electric/30"
                 placeholder="Опишите, что хотите купить (простыми словами)…"
                 maxLength={2000}
                 aria-label="Сообщение для ИИ‑бота"
               />
               <button
                 type="submit"
-                disabled={isThinking}
-                className="rounded-full bg-gradient-cta px-5 py-2 text-sm font-semibold text-neo-night transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={isThinking || !input.trim()}
+                className="rounded-xl bg-gradient-cta px-6 py-4 text-base font-semibold text-neo-night transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 Отправить
               </button>
             </div>
           </form>
         </div>
-      )}
+      </div>
     </>
   );
 };

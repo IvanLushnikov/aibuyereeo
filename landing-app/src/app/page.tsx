@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ChatWidget } from "@/components/chat-widget";
+import { ChatWidget, openChat } from "@/components/chat-widget";
 import { FeedbackForm } from "@/components/feedback-form";
 
 const audience = [
@@ -118,13 +118,14 @@ export default function Home() {
             обязательные параметры и проверит ОКПД2.
           </p>
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-            <Link
-              href="#chat"
+            <button
+              type="button"
+              onClick={openChat}
               className="group relative inline-flex items-center justify-center gap-3 overflow-hidden rounded-2xl bg-gradient-cta px-8 py-5 text-lg font-bold text-white shadow-[0_0_40px_rgba(255,95,141,0.4)] transition-all hover:-translate-y-1 hover:shadow-[0_0_60px_rgba(255,95,141,0.6)] hover:scale-[1.02]"
             >
-              <span className="relative z-10">💬 Попробовать бесплатно</span>
+              <span className="relative z-10">💬 Открыть чат</span>
               <div className="absolute inset-0 animate-pulse bg-gradient-to-r from-transparent via-white/30 to-transparent" />
-            </Link>
+            </button>
             <Link
               href="#how"
               className="inline-flex items-center justify-center rounded-2xl border-2 border-white/30 bg-white/5 px-8 py-5 text-base font-semibold text-white backdrop-blur-md transition-all hover:border-neo-electric hover:bg-white/10 hover:text-neo-electric hover:shadow-[0_0_30px_rgba(0,231,255,0.3)]"
@@ -221,13 +222,14 @@ export default function Home() {
           ))}
         </div>
         <div className="flex justify-center pt-4">
-          <Link
-            href="#chat"
+          <button
+            type="button"
+            onClick={openChat}
             className="group inline-flex items-center gap-3 rounded-2xl border-2 border-neo-electric bg-gradient-to-r from-neo-electric/20 to-neo-electric/10 px-8 py-4 text-base font-semibold text-neo-electric backdrop-blur-md transition-all hover:from-neo-electric/30 hover:to-neo-electric/20 hover:shadow-[0_0_40px_rgba(0,231,255,0.4)]"
           >
-            <span>Попробовать сейчас</span>
+            <span>Открыть чат</span>
             <span className="text-xl transition-transform group-hover:translate-x-1">→</span>
-          </Link>
+          </button>
         </div>
       </section>
 
@@ -259,13 +261,14 @@ export default function Home() {
           ))}
         </div>
         <div className="flex justify-center pt-4">
-          <Link
-            href="#chat"
+          <button
+            type="button"
+            onClick={openChat}
             className="group inline-flex items-center gap-3 rounded-2xl border-2 border-neo-sunrise bg-gradient-to-r from-neo-sunrise/20 to-neo-sunrise/10 px-8 py-4 text-base font-semibold text-neo-sunrise backdrop-blur-md transition-all hover:from-neo-sunrise/30 hover:to-neo-sunrise/20 hover:shadow-[0_0_40px_rgba(255,95,141,0.4)]"
           >
-            <span>Решить вашу задачу</span>
+            <span>Открыть чат</span>
             <span className="text-xl transition-transform group-hover:translate-x-1">→</span>
-          </Link>
+          </button>
         </div>
       </section>
 
@@ -317,12 +320,16 @@ export default function Home() {
           <div className="relative space-y-6">
             <h3 className="font-display text-3xl font-bold text-white sm:text-4xl">Готовы попробовать?</h3>
             <p className="mx-auto max-w-2xl text-lg text-white/90">Начните прямо сейчас — это бесплатно и займёт меньше минуты</p>
-            <Link
-              href="#chat"
+            <button
+              type="button"
+              onClick={() => {
+                const chatWidget = document.querySelector('[aria-label="Открыть чат с ИИ‑ботом"]') as HTMLButtonElement;
+                chatWidget?.click();
+              }}
               className="inline-flex items-center gap-3 rounded-2xl bg-gradient-cta px-10 py-5 text-lg font-bold text-white shadow-[0_0_40px_rgba(255,95,141,0.5)] transition-all hover:-translate-y-1 hover:shadow-[0_0_60px_rgba(255,95,141,0.7)] hover:scale-[1.02]"
             >
-              <span>💬 Начать чат с ботом</span>
-            </Link>
+              <span>💬 Открыть чат</span>
+            </button>
           </div>
         </div>
       </section>
