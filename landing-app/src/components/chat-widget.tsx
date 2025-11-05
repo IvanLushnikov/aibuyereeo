@@ -412,7 +412,7 @@ export const ChatWidget = () => {
         },
       ]);
     }
-  }, [isOpen, hasOpened, hasInitialized, messages.length, isThinking, getClientId, trackEvent, sessionId]);
+  }, [isOpen, hasOpened, hasInitialized, messages.length, isThinking, getClientId, trackEvent, sessionId, welcomeMessage]);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement> | React.KeyboardEvent<HTMLInputElement>) => {
     event.preventDefault();
@@ -459,13 +459,15 @@ export const ChatWidget = () => {
     setIsThinking(true);
 
     try {
-      // Фильтруем fallback сообщения из истории перед отправкой
-      // Это предотвратит отправку ошибок в n8n
+      // Фильтруем fallback и welcome сообщения из истории перед отправкой
+      // Это предотвратит отправку ошибок и приветствий в n8n
       const cleanHistory = updatedHistory
         .filter((m) => {
-          // Пропускаем сообщения агента, которые являются fallback сообщениями
-          if (m.role === "agent" && m.content === fallbackReply) {
-            return false;
+          // Пропускаем сообщения агента, которые являются fallback или welcome сообщениями
+          if (m.role === "agent") {
+            if (m.content === fallbackReply || m.content === welcomeMessage) {
+              return false;
+            }
           }
           return true;
         })
