@@ -7,7 +7,7 @@ type ChatHistoryItem = {
 };
 
 const FALLBACK_REPLY =
-  "Семён сейчас перегружен. Попробуйте отправить запрос ещё раз через минуту.";
+  "ИИ-бот сейчас перегружен. Попробуйте отправить запрос ещё раз через минуту.";
 
 type RateState = {
   count: number;
@@ -86,6 +86,7 @@ export async function POST(request: Request) {
       );
     }
 
+    console.log(`[API] Получено сообщение от ${clientId}:`, { messageLength: message.length, hasHistory: history.length > 0 });
     await appendChatLog({
       timestamp: receivedAt.toISOString(),
       clientId,
@@ -155,12 +156,13 @@ export async function POST(request: Request) {
       const isTimeout = error instanceof Error && error.name === "AbortError";
       status = isTimeout ? "error" : "error";
       replyText = isTimeout 
-        ? "Семён слишком долго думает. Попробуйте ещё раз или переформулируйте вопрос."
+        ? "ИИ-бот слишком долго думает. Попробуйте ещё раз или переформулируйте вопрос."
         : FALLBACK_REPLY;
     }
 
     const latencyMs = Date.now() - startedAt;
 
+    console.log(`[API] Отправка ответа для ${clientId}:`, { status, latencyMs, replyLength: replyText.length });
     await appendChatLog({
       timestamp: new Date().toISOString(),
       clientId,

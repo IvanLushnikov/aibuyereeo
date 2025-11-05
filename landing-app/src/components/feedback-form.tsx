@@ -61,7 +61,7 @@ export const FeedbackForm = () => {
         <div className="text-4xl">🤖</div>
         <h3 className="mt-4 font-display text-2xl">Спасибо!</h3>
         <p className="mt-2 text-sm text-white/70">
-          Семён записал контакт и скоро пришлёт чек-лист внедрения.
+          ИИ-бот записал контакт и скоро пришлёт чек-лист внедрения.
         </p>
         <button
           type="button"
@@ -79,7 +79,7 @@ export const FeedbackForm = () => {
       onSubmit={handleSubmit}
       className="rounded-3xl border border-white/10 bg-white/5 p-10 shadow-neon-soft backdrop-blur-xl"
     >
-      <h3 className="font-display text-2xl">Хотите внедрить Семёна у себя?</h3>
+      <h3 className="font-display text-2xl">Хотите внедрить ИИ-бота у себя?</h3>
       <p className="mt-2 text-sm text-white/70">
         Оставьте контакт — пришлём сценарии и подключим к пилоту.
       </p>

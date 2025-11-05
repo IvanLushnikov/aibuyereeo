@@ -11,10 +11,10 @@ type Message = {
 };
 
 const initialAgentMessage =
-  "Привет! Я Семён. Расскажите, что хотите закупить — подберу КТРУ и характеристики.";
+  "Привет! Я ИИ-бот для подбора КТРУ. Расскажите, что хотите закупить — подберу коды и характеристики.";
 
 const fallbackReply =
-  "Семён сейчас перегружен. Попробуйте отправить запрос ещё раз через минуту.";
+  "ИИ-бот сейчас перегружен. Попробуйте отправить запрос ещё раз через минуту.";
 
 export const ChatWidget = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -170,7 +170,7 @@ export const ChatWidget = () => {
               🤖
             </div>
             <div>
-              <p className="font-display text-lg">Семён</p>
+              <p className="font-display text-lg">ИИ-бот</p>
               <p className="text-sm text-white/60">
                 {isThinking ? "подбираю варианты…" : "онлайн"}
               </p>
@@ -198,7 +198,7 @@ export const ChatWidget = () => {
             {isThinking && (
               <div className="flex items-center gap-2 text-xs text-white/60">
                 <span className="h-2 w-2 animate-ping rounded-full bg-neo-electric" />
-                Семён думает…
+                ИИ-бот думает…
               </div>
             )}
           </div>
@@ -211,7 +211,7 @@ export const ChatWidget = () => {
                 className="flex-1 rounded-full border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:border-neo-electric focus:outline-none"
                 placeholder="Опишите, что хотите купить…"
                 maxLength={2000}
-                aria-label="Сообщение для Семёна"
+                aria-label="Сообщение для ИИ-бота"
               />
               <button
                 type="submit"

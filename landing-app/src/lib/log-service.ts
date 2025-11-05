@@ -6,6 +6,9 @@ type LogType = "chat" | "events";
 
 const LOGS_ROOT = process.env.LOGS_ROOT ?? path.join(process.cwd(), "logs");
 
+// Выводим путь к логам при первом импорте
+console.log(`[LOG] Путь к логам: ${LOGS_ROOT}`);
+
 const ensureDirCache = new Set<string>();
 
 async function ensureDir(filePath: string) {
@@ -58,6 +61,13 @@ export async function appendChatLog(args: {
     args.meta ? JSON.stringify(args.meta) : "",
   ]);
   appendFileSync(filePath, line, { encoding: "utf-8" });
+  console.log(`[LOG] Записано в ${filePath}:`, {
+    timestamp: args.timestamp,
+    clientId: args.clientId,
+    direction: args.direction,
+    status: args.status,
+    messageLength: args.message.length,
+  });
 }
 
 export async function appendEventLog(args: {
@@ -77,6 +87,11 @@ export async function appendEventLog(args: {
     args.payload ? JSON.stringify(args.payload) : "",
   ]);
   appendFileSync(filePath, line, { encoding: "utf-8" });
+  console.log(`[LOG] Записано событие в ${filePath}:`, {
+    timestamp: args.timestamp,
+    clientId: args.clientId,
+    event: args.event,
+  });
 }
 
 export async function writeHealthCheck() {

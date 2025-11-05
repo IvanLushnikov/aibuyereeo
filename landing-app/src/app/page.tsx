@@ -6,7 +6,7 @@ const audience = [
   {
     title: "Инициаторы",
     description:
-      "Скиньте описание закупки — Семён найдёт КТРУ, характеристики и подсветит риски сразу.",
+      "Скиньте описание закупки — ИИ-бот найдёт КТРУ, характеристики и подсветит риски сразу.",
     icon: "💡",
   },
   {
@@ -29,7 +29,7 @@ const steps = [
     text: "Например: нужен монитор 24'' для школы, 10 штук.",
   },
   {
-    title: "Семён уточняет детали",
+    title: "ИИ-бот уточняет детали",
     text: "Спрашивает критичные параметры и проверяет, не пропустили ли важное.",
   },
   {
@@ -53,7 +53,7 @@ const painSolutions = [
   },
   {
     pain: "ЕИС отклоняет из‑за несоответствия ОКПД",
-    solution: "Семён сверяет соответствие и подсвечивает расхождения до отправки.",
+    solution: "ИИ-бот сверяет соответствие и подсвечивает расхождения до отправки.",
   },
   {
     pain: "НМЦК считаете вручную",
@@ -64,7 +64,7 @@ const painSolutions = [
 const testimonials = [
   {
     quote:
-      "Отдел госзаказа занят. Семён за пару минут выдал коды и характеристики — удобно",
+      "Отдел госзаказа занят. ИИ-бот за пару минут выдал коды и характеристики — удобно",
     role: "Инициатор, сфера культуры",
   },
   {
@@ -88,7 +88,7 @@ const features = [
 
 const faq = [
   {
-    question: "Как быстро отвечает Семён?",
+    question: "Как быстро отвечает бот?",
     answer:
       "Обычно 5–15 секунд. Если нагрузка выше — покажем индикатор ожидания и отправим уведомление в чате.",
   },
@@ -108,7 +108,7 @@ const faq = [
   {
     question: "Насколько точные ответы?",
     answer:
-      "Семён предлагает лучшие варианты, но финальную проверку и выбор кода делает специалист.",
+      "ИИ-бот предлагает лучшие варианты, но финальную проверку и выбор кода делает специалист.",
   },
 ];
 
@@ -126,10 +126,10 @@ export default function Home() {
             ИИ-бот для госзакупок
           </span>
           <h1 className="font-display text-4xl leading-tight md:text-5xl lg:text-6xl">
-            Секунды вместо часов: Семён подбирает КТРУ и характеристики за вас
+            Секунды вместо часов: ИИ-бот подбирает КТРУ и характеристики за вас
           </h1>
           <p className="max-w-xl text-lg text-white/75">
-            Опишите закупку по-человечески — Семён найдёт КТРУ по 44-ФЗ и 223-ФЗ, уточнит
+            Опишите закупку по-человечески — ИИ-бот найдёт КТРУ по 44-ФЗ и 223-ФЗ, уточнит
             обязательные параметры, проверит ОКПД и подготовит шаблон ТЗ.
           </p>
           <div className="flex flex-col gap-4 sm:flex-row">
@@ -155,7 +155,7 @@ export default function Home() {
         <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-8 shadow-neon-soft backdrop-blur-xl">
           <div className="absolute inset-0 bg-gradient-hero opacity-30" />
           <div className="relative space-y-6">
-            <h2 className="font-display text-2xl">Что умеет Семён</h2>
+            <h2 className="font-display text-2xl">Что умеет ИИ-бот</h2>
             <ul className="space-y-4 text-sm text-white/75">
               <li className="flex items-start gap-3">
                 <span className="mt-1 text-lg">🎯</span>
@@ -183,7 +183,7 @@ export default function Home() {
           <p className="text-sm uppercase tracking-[0.2em] text-white/40">
             Для кого
           </p>
-          <h2 className="font-display text-3xl md:text-4xl">Семён выручает всех участников закупки</h2>
+          <h2 className="font-display text-3xl md:text-4xl">ИИ-бот выручает всех участников закупки</h2>
         </header>
         <div className="grid gap-6 md:grid-cols-3">
           {audience.map((item) => (
@@ -205,7 +205,7 @@ export default function Home() {
       <section id="how" className="space-y-8">
         <header className="space-y-3">
           <p className="text-sm uppercase tracking-[0.2em] text-white/40">Процесс</p>
-          <h2 className="font-display text-3xl md:text-4xl">Как Семён работает с вашим запросом</h2>
+          <h2 className="font-display text-3xl md:text-4xl">Как ИИ-бот работает с вашим запросом</h2>
         </header>
         <div className="grid gap-6 md:grid-cols-4">
           {steps.map((step, index) => (
@@ -267,16 +267,16 @@ export default function Home() {
       <section className="space-y-8">
         <header className="space-y-3">
           <p className="text-sm uppercase tracking-[0.2em] text-white/40">Что внутри</p>
-          <h2 className="font-display text-3xl md:text-4xl">Технологии и возможности Семёна</h2>
+          <h2 className="font-display text-3xl md:text-4xl">Технологии и возможности ИИ-бота</h2>
         </header>
         <div className="grid gap-4 md:grid-cols-2">
           {features.map((feature) => (
             <div
               key={feature}
-              className="flex items-start gap-3 rounded-3xl border border-white/10 bg-white/5 p-5 text-sm text-white/75 shadow-neon-soft backdrop-blur-xl"
+              className="flex items-center gap-3 rounded-3xl border border-white/10 bg-white/5 p-5 text-sm text-white/75 shadow-neon-soft backdrop-blur-xl"
             >
-              <span className="mt-1 text-lg text-neo-electric">✶</span>
-              {feature}
+              <span className="text-lg text-neo-electric">✶</span>
+              <span>{feature}</span>
             </div>
           ))}
         </div>
@@ -307,7 +307,7 @@ export default function Home() {
         <div className="space-y-4">
           <p className="text-sm uppercase tracking-[0.2em] text-white/40">Связаться</p>
           <h2 className="font-display text-3xl md:text-4xl">
-            Хотите внедрить Семёна или попробовать на своём кейсе?
+            Хотите внедрить ИИ-бота или попробовать на своём кейсе?
           </h2>
           <p className="text-sm text-white/70">
             Расскажите, что планируете автоматизировать. Отправим сценарии запуска, подключим пилот и поможем с обучением команды.
@@ -323,7 +323,7 @@ export default function Home() {
 
       <footer className="border-t border-white/10 pt-10 text-sm text-white/50">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <p>© {new Date().getFullYear()} Робот Семён. Все права защищены.</p>
+          <p>© {new Date().getFullYear()} ИИ-бот для госзакупок. Все права защищены.</p>
           <div className="flex flex-wrap gap-4">
             <Link href="mailto:team@semion.ai" className="hover:text-neo-electric">
               team@semion.ai
