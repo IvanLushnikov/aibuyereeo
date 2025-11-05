@@ -14,6 +14,15 @@ type Message = {
 const fallbackReply =
   "ИИ‑бот сейчас перегружен. Попробуйте отправить запрос ещё раз через минуту.";
 
+const welcomeMessage = `Привет! Я помогу найти код КТРУ по описанию товара или услуги.
+
+Просто опишите, что вам нужно купить, простыми словами. Например:
+• "Нужны мониторы 24 дюйма для школы, 10 штук"
+• "Требуется грузовой автомобиль грузоподъемностью 3 тонны"
+• "Нужны услуги по уборке офисных помещений"
+
+Я задам уточняющие вопросы, если нужно, и подберу подходящие коды КТРУ с характеристиками.`;
+
 // Валидация и санитизация URL для защиты от XSS
 const isValidUrl = (url: string): boolean => {
   try {
@@ -391,96 +400,17 @@ export const ChatWidget = () => {
       });
     }
 
-    // Если открываем чат впервые и еще не инициализировали, отправляем пустое сообщение для получения первого вопроса от бота
-    if (newIsOpen && !hasInitialized && messages.length === 0 && !isThinking && !initializationRef.current) {
-      // Устанавливаем флаг инициализации сразу для предотвращения race condition
-      initializationRef.current = true;
+    // Если открываем чат впервые, показываем статическое приветственное сообщение
+    if (newIsOpen && !hasInitialized && messages.length === 0) {
       setHasInitialized(true);
-      // НЕ показываем статус thinking сразу - только после начала запроса
-      
-      // Убеждаемся, что clientId установлен перед отправкой
-      const id = getClientId();
-      
-      if (!id || !id.trim()) {
-        console.error("Cannot initialize chat: invalid clientId");
-        setIsThinking(false);
-        setHasInitialized(false);
-        initializationRef.current = false;
-        return;
-      }
-      
-      // Создаем новый AbortController для этого запроса
-      const controller = new AbortController();
-      abortControllerRef.current = controller;
-      
-      try {
-        // Показываем статус thinking только после начала запроса к API
-        setIsThinking(true);
-        
-        const response = await fetch("/api/chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            clientId: id,
-            sessionId,
-            message: "",
-            history: [],
-            meta: { source: "landing", isInitial: true },
-          }),
-          signal: controller.signal,
-        });
-
-        // Проверяем, не был ли запрос отменен
-        if (controller.signal.aborted) {
-          return;
-        }
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          console.error("Chat API error:", response.status, errorData);
-          throw new Error(`Chat API responded with ${response.status}: ${errorData.error || 'unknown error'}`);
-        }
-
-        const data = await response.json();
-        const reply = typeof data?.reply === "string" ? data.reply : fallbackReply;
-
-        // Проверяем еще раз, не был ли компонент закрыт
-        if (!controller.signal.aborted) {
-          setMessages([
-            {
-              id: uuid(),
-              role: "agent",
-              content: reply,
-              timestamp: Date.now(),
-            },
-          ]);
-          trackEvent("chat_message_received", { latencyMs: data?.latencyMs ?? null, initial: true }).catch(err => {
-            console.warn("Failed to track event:", err);
-          });
-        }
-      } catch (error) {
-        // Игнорируем ошибки отмены запроса
-        if (error instanceof Error && error.name === 'AbortError') {
-          initializationRef.current = false;
-          return;
-        }
-        console.error("initial chat error", error);
-        // НЕ добавляем fallback сообщение в историю при ошибке инициализации
-        // Это предотвратит отправку ошибки в n8n при следующем запросе
-        // Просто оставляем messages пустым - пользователь увидит пустой чат
-        // и сможет попробовать снова
-      } finally {
-        if (!controller.signal.aborted) {
-          setIsThinking(false);
-        }
-        if (abortControllerRef.current === controller) {
-          abortControllerRef.current = null;
-        }
-        // Сбрасываем флаг инициализации только если запрос не был отменен
-        if (!controller.signal.aborted) {
-          initializationRef.current = false;
-        }
-      }
+      setMessages([
+        {
+          id: uuid(),
+          role: "agent",
+          content: welcomeMessage,
+          timestamp: Date.now(),
+        },
+      ]);
     }
   }, [isOpen, hasOpened, hasInitialized, messages.length, isThinking, getClientId, trackEvent, sessionId]);
 
@@ -498,6 +428,10 @@ export const ChatWidget = () => {
       return;
     }
 
+    // Если это первое сообщение пользователя, удаляем приветственное сообщение
+    // и начинаем нормальный диалог с ботом
+    const isFirstUserMessage = messages.length === 1 && messages[0].role === "agent" && messages[0].content === welcomeMessage;
+
     const userMessage: Message = {
       id: uuid(),
       role: "user",
@@ -505,7 +439,11 @@ export const ChatWidget = () => {
       timestamp: Date.now(),
     };
 
-    const updatedHistory = [...messages, userMessage];
+    // Если это первое сообщение, очищаем историю (убираем приветствие)
+    const updatedHistory = isFirstUserMessage 
+      ? [userMessage]
+      : [...messages, userMessage];
+    
     setMessages(updatedHistory);
     setInput("");
 

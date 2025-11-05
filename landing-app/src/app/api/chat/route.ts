@@ -272,11 +272,8 @@ export async function POST(request: Request) {
     }
 
     const startedAt = Date.now();
-    // Увеличиваем таймаут для инициализации (n8n может дольше обрабатывать первый запрос)
-    const baseTimeoutMs = Number(process.env.CHAT_TIMEOUT_MS ?? 25000);
-    const timeoutMs = isInitial 
-      ? Math.max(30000, Math.min(90000, baseTimeoutMs * 1.5)) // +50% для инициализации, но не больше 90 секунд
-      : Math.max(5000, Math.min(60000, baseTimeoutMs));
+    // Таймаут 1.5 минуты (90 секунд) для всех запросов
+    const timeoutMs = Number(process.env.CHAT_TIMEOUT_MS ?? 90000);
 
     // Валидация payload перед отправкой в n8n
     const n8nPayloadSchema = z.object({
