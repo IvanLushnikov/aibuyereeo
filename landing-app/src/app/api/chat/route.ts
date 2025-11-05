@@ -273,12 +273,15 @@ export async function POST(request: Request) {
     const timeoutMs = Number(process.env.CHAT_TIMEOUT_MS ?? 25000);
 
     // Подготовка данных для отправки в n8n
+    // n8n AI Agent ожидает один объект input, поэтому оборачиваем все в один ключ
     const n8nPayload = {
-      clientId,
-      message,
-      history,
-      meta,
-      receivedAt: receivedAt.toISOString(),
+      data: {
+        clientId,
+        message,
+        history,
+        meta,
+        receivedAt: receivedAt.toISOString(),
+      }
     };
 
     console.log(`[API] Отправка запроса в n8n для ${clientId}:`, {

@@ -413,10 +413,10 @@ export const ChatWidget = () => {
       const controller = new AbortController();
       abortControllerRef.current = controller;
       
-      // Показываем статус thinking только после начала запроса
-      setIsThinking(true);
-      
       try {
+        // Показываем статус thinking только после начала запроса к API
+        setIsThinking(true);
+        
         const response = await fetch("/api/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -514,7 +514,6 @@ export const ChatWidget = () => {
     const updatedHistory = [...messages, userMessage];
     setMessages(updatedHistory);
     setInput("");
-    setIsThinking(true);
 
     trackEvent("chat_message_sent", { length: value.length }).catch(err => {
       console.warn("Failed to track event:", err);
@@ -523,6 +522,9 @@ export const ChatWidget = () => {
     // Создаем новый AbortController для этого запроса
     const controller = new AbortController();
     abortControllerRef.current = controller;
+
+    // Показываем статус thinking только после начала запроса к API
+    setIsThinking(true);
 
     try {
       const response = await fetch("/api/chat", {
