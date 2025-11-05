@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { ChatWidget, openChat } from "@/components/chat-widget";
 import { FeedbackForm } from "@/components/feedback-form";
+import { Header } from "@/components/header";
 
 const audience = [
   {
@@ -99,7 +100,9 @@ const faq = [
 
 export default function Home() {
   return (
-    <main className="relative mx-auto flex min-h-screen max-w-7xl flex-col gap-32 px-4 pb-32 pt-20 sm:px-6 md:px-8 lg:px-12">
+    <>
+      <Header />
+      <main className="relative mx-auto flex min-h-screen max-w-7xl flex-col gap-32 px-4 pb-32 pt-24 sm:px-6 md:px-8 md:pt-28 lg:px-12">
       <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
         <div className="animate-float absolute -left-24 top-16 h-96 w-96 rounded-full bg-neo-glow/15 blur-3xl" />
         <div className="animate-float absolute -right-20 bottom-32 h-[32rem] w-[32rem] rounded-full bg-neo-electric/15 blur-3xl delay-1000" />
@@ -354,5 +357,6 @@ export default function Home() {
         <ChatWidget />
       </div>
     </main>
+    </>
   );
 }
