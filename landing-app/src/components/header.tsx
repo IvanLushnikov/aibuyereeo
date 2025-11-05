@@ -30,7 +30,7 @@ export const Header = () => {
             href="#how"
             className="text-xs font-medium text-white/70 transition-all hover:text-neo-electric hover:scale-105"
           >
-            Как работает
+            Как это работает
           </Link>
           <Link
             href="#audience"

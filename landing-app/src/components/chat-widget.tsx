@@ -274,6 +274,7 @@ export const ChatWidget = () => {
   const [hasInitialized, setHasInitialized] = useState(false);
   const abortControllerRef = React.useRef<AbortController | null>(null);
   const initializationRef = useRef(false); // Для предотвращения race condition
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
 
   const sessionId = useMemo(() => uuid(), []);
   const thinkingPhrases = useMemo<string[]>(
@@ -558,12 +559,27 @@ export const ChatWidget = () => {
     };
   }, [isOpen, handleToggle]);
 
+  // Автоскролл при добавлении новых сообщений или изменении статуса thinking
+  useEffect(() => {
+    if (isOpen && messagesContainerRef.current) {
+      // Используем requestAnimationFrame для гарантии, что DOM обновился
+      requestAnimationFrame(() => {
+        if (messagesContainerRef.current) {
+          messagesContainerRef.current.scrollTo({
+            top: messagesContainerRef.current.scrollHeight,
+            behavior: 'smooth'
+          });
+        }
+      });
+    }
+  }, [messages, isThinking, isOpen]);
+
   return (
     <>
       <button
         type="button"
         onClick={() => handleToggle()}
-        aria-label={isOpen ? "Закрыть чат" : "Открыть чат с ИИ‑ботом"}
+        aria-label={isOpen ? "Закрыть чат" : "Подобрать код КТРУ"}
         aria-expanded={isOpen}
         className="group fixed bottom-6 right-6 z-40 flex items-center justify-center gap-2 overflow-hidden rounded-full bg-gradient-cta px-6 py-3 text-base font-bold text-neo-night shadow-[0_0_30px_rgba(255,95,141,0.6)] transition-all duration-300 hover:scale-105 hover:shadow-[0_0_40px_rgba(255,95,141,0.8)] focus:outline-none focus:ring-4 focus:ring-neo-electric/40 md:px-8 md:py-4 md:text-lg"
       >
@@ -599,7 +615,7 @@ export const ChatWidget = () => {
               <div>
                 <p className="font-display text-xl font-bold">ИИ‑бот</p>
                 <p className="text-sm text-white/60">
-                  {isThinking ? "подбираю варианты…" : "онлайн"}
+                  {isThinking ? "подбираю варианты..." : "онлайн"}
                 </p>
               </div>
             </div>
@@ -615,6 +631,7 @@ export const ChatWidget = () => {
 
           {/* Messages area */}
           <div
+            ref={messagesContainerRef}
             className="flex flex-1 flex-col gap-4 overflow-y-auto px-6 py-6"
             role="log"
             aria-live="polite"
