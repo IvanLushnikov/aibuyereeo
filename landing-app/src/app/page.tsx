@@ -138,17 +138,6 @@ export default function Home() {
               Как это работает
             </Link>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <span className="flex items-center gap-2 rounded-lg border border-neo-electric/40 bg-gradient-to-r from-neo-electric/20 to-neo-electric/10 px-4 py-1.5 text-xs font-semibold text-neo-electric backdrop-blur-sm">
-              ⚡ Бесплатно
-            </span>
-            <span className="flex items-center gap-2 rounded-lg border border-white/20 bg-white/5 px-4 py-1.5 text-xs font-medium text-white/80 backdrop-blur-sm">
-              🛡️ Без регистрации
-            </span>
-            <span className="flex items-center gap-2 rounded-lg border border-white/20 bg-white/5 px-4 py-1.5 text-xs font-medium text-white/80 backdrop-blur-sm">
-              🧠 Актуальная база КТРУ
-            </span>
-          </div>
         </div>
         <div className="relative overflow-hidden rounded-2xl border border-white/20 bg-gradient-to-br from-white/10 via-white/5 to-transparent p-6 shadow-[0_20px_60px_rgba(0,231,255,0.15)] backdrop-blur-xl lg:p-8">
           <div className="absolute inset-0 bg-gradient-hero opacity-20" />
@@ -305,6 +294,17 @@ export default function Home() {
           <div className="relative space-y-4">
             <h3 className="font-display text-2xl font-bold text-white sm:text-3xl">Готовы попробовать?</h3>
             <p className="mx-auto max-w-2xl text-base text-white/90">Начните прямо сейчас — это бесплатно и займёт меньше минуты</p>
+            <div className="flex flex-wrap justify-center gap-2 mb-4">
+              <span className="flex items-center gap-2 rounded-lg border border-neo-electric/40 bg-gradient-to-r from-neo-electric/20 to-neo-electric/10 px-4 py-1.5 text-xs font-semibold text-neo-electric backdrop-blur-sm">
+                ⚡ Бесплатно
+              </span>
+              <span className="flex items-center gap-2 rounded-lg border border-white/20 bg-white/5 px-4 py-1.5 text-xs font-medium text-white/80 backdrop-blur-sm">
+                🛡️ Без регистрации
+              </span>
+              <span className="flex items-center gap-2 rounded-lg border border-white/20 bg-white/5 px-4 py-1.5 text-xs font-medium text-white/80 backdrop-blur-sm">
+                🧠 Актуальная база КТРУ
+              </span>
+            </div>
             <button
               type="button"
               onClick={() => {
@@ -332,6 +332,56 @@ export default function Home() {
         <FeedbackForm />
       </section>
 
+      <footer className="border-t border-white/10 pt-12 pb-8">
+        <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+          <div className="space-y-4">
+            <h3 className="font-display text-lg font-bold text-white">Контакты</h3>
+            <div className="space-y-3 text-sm text-white/70">
+              <a
+                href="https://t.me/Aiexpertbuyerbot"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 transition-colors hover:text-neo-electric"
+              >
+                <span>💬</span>
+                <span>Telegram: @Aiexpertbuyerbot</span>
+              </a>
+              <a
+                href="https://zakupki44fz.ru/app/okpd2"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 transition-colors hover:text-neo-electric"
+              >
+                <span>🌐</span>
+                <span>Сайт для закупщика</span>
+              </a>
+            </div>
+          </div>
+          <div className="space-y-4">
+            <h3 className="font-display text-lg font-bold text-white">О продукте</h3>
+            <p className="text-sm leading-relaxed text-white/70">
+              ИИ‑бот для подбора кодов КТРУ по 44‑ФЗ и 223‑ФЗ. Бесплатно, без регистрации, прямо в браузере.
+            </p>
+          </div>
+          <div className="space-y-4">
+            <h3 className="font-display text-lg font-bold text-white">Полезные ссылки</h3>
+            <div className="space-y-2 text-sm text-white/70">
+              <Link href="#how" className="block transition-colors hover:text-neo-electric">
+                Как это работает
+              </Link>
+              <Link href="#audience" className="block transition-colors hover:text-neo-electric">
+                Для кого
+              </Link>
+              <Link href="#feedback" className="block transition-colors hover:text-neo-electric">
+                Оставить заявку
+              </Link>
+            </div>
+          </div>
+        </div>
+        <div className="mt-8 border-t border-white/10 pt-6 text-center text-xs text-white/50">
+          <p>© {new Date().getFullYear()} ИИ‑бот для госзакупок. Все права защищены.</p>
+        </div>
+      </footer>
 
       <div id="chat">
         <ChatWidget />
