@@ -263,10 +263,21 @@ export class N8NClient {
       // Извлекаем reply из разных возможных полей
       // n8n может возвращать ответ в разных форматах:
       // 1. { reply: "..." } - напрямую
-      // 2. { output: { reply: "..." } } - в обертке
-      // 3. { data: { reply: "..." } } - в обертке
-      // 4. Просто строка (если n8n настроен неправильно)
+      // 2. [{ reply: "..." }] - массив (если n8n возвращает массив)
+      // 3. { output: { reply: "..." } } - в обертке
+      // 4. { data: { reply: "..." } } - в обертке
+      // 5. Просто строка (если n8n настроен неправильно)
       let rawReply: string | null = null;
+      
+      // Если пришел массив, берем первый элемент
+      if (Array.isArray(data)) {
+        console.log("[N8NClient] Ответ от n8n - массив, берем первый элемент");
+        if (data.length > 0 && data[0] && typeof data[0] === "object") {
+          data = data[0] as N8NResponse;
+        } else {
+          throw new Error("n8n вернул пустой массив");
+        }
+      }
       
       if (typeof data === "string") {
         // Если n8n вернул просто строку
@@ -279,7 +290,12 @@ export class N8NClient {
         if (!rawReply) {
           const output = (data as any).output || (data as any).data || (data as any).body;
           if (output && typeof output === "object") {
-            rawReply = output.reply || output.answer || output.text || output.message || null;
+            // Если output тоже массив, берем первый элемент
+            if (Array.isArray(output) && output.length > 0) {
+              rawReply = output[0].reply || output[0].answer || output[0].text || output[0].message || null;
+            } else if (output && typeof output === "object") {
+              rawReply = output.reply || output.answer || output.text || output.message || null;
+            }
           }
         }
       }
