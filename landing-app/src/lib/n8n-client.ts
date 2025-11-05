@@ -312,7 +312,13 @@ export class N8NClient {
 
       // Проверяем, что это не необработанный шаблон n8n
       if (rawReply.includes("{{") && rawReply.includes("}}")) {
-        throw new Error("n8n вернул необработанный шаблон (проверьте настройки 'Respond to Webhook')");
+        console.error("[N8NClient] КРИТИЧЕСКАЯ ОШИБКА: n8n вернул необработанный шаблон!");
+        console.error("[N8NClient] Полный ответ:", JSON.stringify(data, null, 2));
+        console.error("[N8NClient] Попробуйте исправить настройки 'Respond to Webhook' в n8n:");
+        console.error("[N8NClient] - Убедитесь, что данные приходят из предыдущей ноды");
+        console.error("[N8NClient] - Проверьте INPUT ноды 'Respond to Webhook' - там должно быть поле 'reply'");
+        console.error("[N8NClient] - Возможно, нужно использовать другой путь: $json.output.reply или $json[0].reply");
+        throw new Error("n8n вернул необработанный шаблон (проверьте настройки 'Respond to Webhook' - данные не приходят из предыдущей ноды)");
       }
 
       if (rawReply.trim().length === 0) {
