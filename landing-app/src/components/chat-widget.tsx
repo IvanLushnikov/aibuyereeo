@@ -610,7 +610,7 @@ export const ChatWidget = () => {
     <>
       <button
         type="button"
-        onClick={handleToggle}
+        onClick={() => handleToggle()}
         aria-label={isOpen ? "Закрыть чат" : "Открыть чат с ИИ‑ботом"}
         aria-expanded={isOpen}
         className="group fixed bottom-6 right-6 z-40 flex items-center justify-center gap-2 overflow-hidden rounded-full bg-gradient-cta px-6 py-3 text-base font-bold text-neo-night shadow-[0_0_30px_rgba(255,95,141,0.6)] transition-all duration-300 hover:scale-105 hover:shadow-[0_0_40px_rgba(255,95,141,0.8)] focus:outline-none focus:ring-4 focus:ring-neo-electric/40 md:px-8 md:py-4 md:text-lg"
@@ -623,7 +623,7 @@ export const ChatWidget = () => {
       {isOpen && (
         <div
           className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm transition-opacity"
-          onClick={handleToggle}
+          onClick={() => handleToggle()}
           aria-hidden="true"
         />
       )}
@@ -653,7 +653,7 @@ export const ChatWidget = () => {
             </div>
             <button
               type="button"
-              onClick={handleToggle}
+              onClick={() => handleToggle()}
               aria-label="Закрыть чат"
               className="flex h-10 w-10 items-center justify-center rounded-full bg-white/5 text-xl text-white/70 transition hover:bg-white/10 hover:text-white"
             >

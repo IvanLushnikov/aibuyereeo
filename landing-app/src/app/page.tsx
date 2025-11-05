@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import { ChatWidget, openChat } from "@/components/chat-widget";
 import { FeedbackForm } from "@/components/feedback-form";
