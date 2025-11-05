@@ -243,21 +243,55 @@ export class N8NClient {
 
       // Парсим ответ
       const responseText = await response.text();
+      
+      // Детальное логирование для отладки
+      console.log("[N8NClient] Ответ от n8n (первые 500 символов):", responseText.slice(0, 500));
+      console.log("[N8NClient] Длина ответа:", responseText.length);
+      console.log("[N8NClient] Content-Type:", response.headers.get("content-type"));
+      
       let data: N8NResponse;
       
       try {
         data = JSON.parse(responseText);
+        console.log("[N8NClient] Распарсенный JSON:", JSON.stringify(data).slice(0, 500));
       } catch (parseError) {
         console.error("[N8NClient] Ошибка парсинга ответа от n8n:", parseError);
+        console.error("[N8NClient] Сырой ответ:", responseText.slice(0, 500));
         throw new Error("n8n вернул не-JSON ответ");
       }
 
       // Извлекаем reply из разных возможных полей
-      const rawReply = data.reply || data.answer || data.text || data.message || null;
+      // n8n может возвращать ответ в разных форматах:
+      // 1. { reply: "..." } - напрямую
+      // 2. { output: { reply: "..." } } - в обертке
+      // 3. { data: { reply: "..." } } - в обертке
+      // 4. Просто строка (если n8n настроен неправильно)
+      let rawReply: string | null = null;
+      
+      if (typeof data === "string") {
+        // Если n8n вернул просто строку
+        rawReply = data;
+      } else if (data && typeof data === "object") {
+        // Проверяем разные варианты структуры
+        rawReply = data.reply || data.answer || data.text || data.message || null;
+        
+        // Если не нашли в корне, проверяем вложенные объекты
+        if (!rawReply) {
+          const output = (data as any).output || (data as any).data || (data as any).body;
+          if (output && typeof output === "object") {
+            rawReply = output.reply || output.answer || output.text || output.message || null;
+          }
+        }
+      }
+      
+      console.log("[N8NClient] Извлеченный reply:", rawReply ? rawReply.slice(0, 200) : "null");
 
       // Проверяем, что ответ валиден
       if (!rawReply || typeof rawReply !== "string") {
-        throw new Error("n8n вернул пустой или невалидный ответ");
+        console.error("[N8NClient] Не удалось извлечь reply из ответа n8n:");
+        console.error("[N8NClient] Структура данных:", JSON.stringify(data, null, 2).slice(0, 1000));
+        console.error("[N8NClient] Доступные ключи:", Object.keys(data || {}));
+        throw new Error(`n8n вернул пустой или невалидный ответ. Структура: ${JSON.stringify(data).slice(0, 200)}`);
       }
 
       // Проверяем, что это не необработанный шаблон n8n
