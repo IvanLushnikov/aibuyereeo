@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { appendChatLog } from "@/lib/log-service";
 import { LRUCache } from "@/lib/lru-cache";
+import { N8NClient } from "@/lib/n8n-client";
+import { z } from "zod";
 
 type ChatHistoryItem = {
   role: "user" | "agent";
@@ -270,26 +272,67 @@ export async function POST(request: Request) {
     }
 
     const startedAt = Date.now();
-    const timeoutMs = Number(process.env.CHAT_TIMEOUT_MS ?? 25000);
+    const timeoutMs = Math.max(5000, Math.min(60000, Number(process.env.CHAT_TIMEOUT_MS ?? 25000)));
 
-    // Подготовка данных для отправки в n8n
-    // Отправляем данные напрямую - n8n webhook автоматически передаст их в AI Agent
+    // Валидация payload перед отправкой в n8n
+    const n8nPayloadSchema = z.object({
+      clientId: z.string().min(1),
+      message: z.string().max(2000),
+      history: z.array(z.object({
+        role: z.enum(['user', 'agent']),
+        content: z.string().max(4000),
+      })).max(10),
+      meta: z.record(z.string(), z.unknown()).optional(),
+      receivedAt: z.string().datetime(),
+    });
+
+    let validatedPayload;
+    try {
+      validatedPayload = n8nPayloadSchema.parse({
+        clientId,
+        message,
+        history,
+        meta,
+        receivedAt: receivedAt.toISOString(),
+      });
+    } catch (validationError) {
+      console.error("[API] Ошибка валидации payload:", validationError);
+      await appendChatLog({
+        timestamp: new Date().toISOString(),
+        clientId,
+        direction: "agent",
+        message: FALLBACK_REPLY,
+        status: "error",
+        meta: { reason: "validation_error", error: validationError instanceof Error ? validationError.message : String(validationError) },
+      });
+      return NextResponse.json(
+        {
+          reply: FALLBACK_REPLY,
+          latencyMs: 0,
+          status: "error",
+        },
+        { status: 200 }
+      );
+    }
+
+    // Генерируем requestId для трейсинга
+    const requestId = `req-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     const n8nPayload = {
-      clientId,
-      message,
-      history,
-      meta,
-      receivedAt: receivedAt.toISOString(),
+      ...validatedPayload,
+      requestId,
     };
 
     console.log(`[API] Отправка запроса в n8n для ${clientId}:`, {
-      webhookUrl: webhookUrl.replace(/\/[^\/]*$/, '/***'), // Скрываем секретную часть URL
+      requestId,
+      webhookUrl: webhookUrl.replace(/\/[^\/]*$/, '/***'),
       messageLength: message.length,
       historyLength: history.length,
       isInitial,
       hasSecret: !!secret,
-      payload: JSON.stringify(n8nPayload).slice(0, 200), // Первые 200 символов payload для отладки
     });
+
+    // Создаем клиент n8n
+    const n8nClient = new N8NClient(webhookUrl, secret, timeoutMs);
 
     let replyText = FALLBACK_REPLY;
     let status: "ok" | "fallback" | "error" = "fallback";
@@ -297,154 +340,39 @@ export async function POST(request: Request) {
     let n8nError: string | null = null;
 
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-
-      console.log(`[API] 🔍 Детальный запрос к n8n для ${clientId}:`, {
-        url: webhookUrl.replace(/\/[^\/]*$/, '/***'),
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(secret ? { "x-n8n-secret": "***" } : {}),
-        },
-        payloadSize: JSON.stringify(n8nPayload).length,
-        payloadPreview: JSON.stringify(n8nPayload).slice(0, 100),
-      });
-
-      const fetchStartTime = Date.now();
-      const response = await fetch(webhookUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(secret ? { "x-n8n-secret": secret } : {}),
-        },
-        body: JSON.stringify(n8nPayload),
-        signal: controller.signal,
-      });
-
-      const fetchTime = Date.now() - fetchStartTime;
-      clearTimeout(timeoutId);
-      n8nResponseStatus = response.status;
-      
-      console.log(`[API] 📥 Ответ от n8n для ${clientId}:`, {
-        status: response.status,
-        statusText: response.statusText,
-        fetchTime: `${fetchTime}ms`,
-        headers: Object.fromEntries(response.headers.entries()),
-      });
-
-      if (!response.ok) {
-        const errorBody = await response.text().catch(() => '');
-        console.error(`[API] n8n webhook вернул ошибку ${response.status}:`, errorBody.slice(0, 500));
-        
-        // Извлекаем сообщение об ошибке из ответа n8n
-        let errorMessage = `Ошибка n8n (статус ${response.status})`;
-        try {
-          const errorData = JSON.parse(errorBody);
-          if (errorData.message) {
-            errorMessage = errorData.message;
-          }
-        } catch {
-          // Если не удалось распарсить, используем дефолтное сообщение
-        }
-        
-        // Для 404 и 500 возвращаем понятное сообщение
-        if (response.status === 404) {
-          // Проверяем есть ли в сообщении подсказка про активацию
-          if (errorMessage.includes("must be active") || errorMessage.includes("not registered")) {
-            replyText = `ИИ‑бот не настроен: Workflow не активирован в n8n. Включите переключатель "Active" в правом верхнем углу редактора n8n.`;
-          } else {
-            replyText = `ИИ‑бот не настроен: Workflow не найден в n8n. Проверьте URL webhook.`;
-          }
-        } else if (response.status === 500) {
-          replyText = `ИИ‑бот временно недоступен: ${errorMessage}. Проверьте настройки workflow в n8n.`;
-        } else {
-          replyText = `ИИ‑бот вернул ошибку: ${errorMessage}. Обратитесь к администратору.`;
-        }
-        
-        status = "error";
-        n8nResponseStatus = response.status;
-        n8nError = errorMessage;
-        
-        // Пропускаем обработку ответа и переходим к логированию
-      } else {
-        // Обрабатываем успешный ответ только если response.ok = true
-        const data = await response.json().catch((parseError) => {
-          const text = response.text().catch(() => '');
-          console.error("[API] Ошибка парсинга ответа от n8n:", parseError);
-          return { _parseError: true, _rawResponse: text };
-        });
-
-        // Обработка разных форматов ответов от n8n
-        if (data._parseError) {
-          console.error("[API] n8n вернул не-JSON ответ:", data._rawResponse?.slice(0, 200));
-          replyText = FALLBACK_REPLY;
-          status = "fallback";
-        } else {
-          // Функция для проверки, что строка не является необработанным шаблоном n8n
-          const isValidReply = (value: string): boolean => {
-            if (!value || typeof value !== "string") return false;
-            // Проверяем, что это не шаблон n8n (необработанный)
-            if (value.includes("{{") && value.includes("}}")) {
-              return false;
-            }
-            // Проверяем, что это не пустая строка после trim
-            return value.trim().length > 0;
-          };
-
-          // Пробуем разные поля в ответе
-          const rawReply = 
-            typeof data?.reply === "string" ? data.reply
-            : typeof data?.answer === "string" ? data.answer
-            : typeof data?.text === "string" ? data.text
-            : typeof data?.message === "string" ? data.message
-            : null;
-
-          // Проверяем, что ответ валиден и не является шаблоном
-          if (rawReply && isValidReply(rawReply)) {
-            replyText = rawReply;
-            status = "ok";
-          } else {
-            // Если ответ содержит шаблон или невалиден, это ошибка конфигурации n8n
-            console.error(`[API] n8n вернул необработанный шаблон или пустой ответ для ${clientId}:`, {
-              rawReply,
-              responseKeys: Object.keys(data || {}),
-              fullData: JSON.stringify(data).slice(0, 500),
-            });
-            replyText = "Ошибка конфигурации n8n: ответ содержит необработанный шаблон. Проверьте настройки 'Respond to Webhook' node.";
-            status = "error";
-          }
-
-          console.log(`[API] Получен ответ от n8n для ${clientId}:`, {
-            status: response.status,
-            replyLength: replyText.length,
-            isValid: status === "ok",
-            rawReply: rawReply?.slice(0, 100),
-            hasReply: !!data?.reply,
-            hasAnswer: !!data?.answer,
-            hasText: !!data?.text,
-            hasMessage: !!data?.message,
-            responseKeys: Object.keys(data || {}),
-          });
-        }
-      }
+      const result = await n8nClient.sendMessage(n8nPayload);
+      replyText = result.reply;
+      status = result.status;
+      n8nResponseStatus = 200;
     } catch (error) {
-      const isAbortError = error instanceof Error && error.name === "AbortError";
-      
       n8nError = error instanceof Error ? error.message : String(error);
       
       console.error(`[API] Ошибка при вызове n8n webhook для ${clientId}:`, {
         error: n8nError,
-        isAbortError,
+        requestId,
         webhookUrl: webhookUrl.replace(/\/[^\/]*$/, '/***'),
+        circuitBreakerState: n8nClient.getCircuitBreakerState(),
       });
 
-      // AbortError может быть как таймаутом, так и отменой запроса
-      // В данном случае таймаут устанавливается через setTimeout, поэтому считаем это таймаутом
       status = "error";
-      replyText = isAbortError 
-        ? "ИИ‑бот слишком долго думает. Попробуйте ещё раз или переформулируйте вопрос."
-        : FALLBACK_REPLY;
+
+      // Формируем понятное сообщение об ошибке
+      if (n8nError.includes("Circuit breaker is open") || n8nError.includes("circuit breaker открыт")) {
+        replyText = "ИИ‑бот временно недоступен. Попробуйте позже.";
+      } else if (n8nError.includes("timeout") || n8nError.includes("AbortError")) {
+        replyText = "ИИ‑бот слишком долго думает. Попробуйте ещё раз или переформулируйте вопрос.";
+      } else if (n8nError.includes("Payload too large")) {
+        replyText = "Сообщение слишком большое. Попробуйте сократить текст или историю сообщений.";
+        n8nResponseStatus = 413;
+      } else if (n8nError.includes("404") || n8nError.includes("not found") || n8nError.includes("не найден")) {
+        replyText = "ИИ‑бот не настроен: Workflow не найден в n8n. Проверьте URL webhook.";
+        n8nResponseStatus = 404;
+      } else if (n8nError.includes("500") || n8nError.includes("server error")) {
+        replyText = "ИИ‑бот временно недоступен. Проверьте настройки workflow в n8n.";
+        n8nResponseStatus = 500;
+      } else {
+        replyText = FALLBACK_REPLY;
+      }
     }
 
     const latencyMs = Date.now() - startedAt;
@@ -466,9 +394,13 @@ export async function POST(request: Request) {
       status,
       meta: {
         ...meta,
+        requestId,
         n8nResponseStatus,
         n8nError: n8nError ? n8nError.slice(0, 200) : undefined,
       },
+    }).catch((error) => {
+      console.error('[API] Ошибка логирования (не критично):', error);
+      // Не прерываем выполнение при ошибке логирования
     });
 
     return NextResponse.json(
