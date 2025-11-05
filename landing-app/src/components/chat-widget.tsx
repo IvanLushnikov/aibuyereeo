@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { v4 as uuid } from "uuid";
+import { ensureClientId } from "@/lib/client-id";
 
 type Message = {
   id: string;
@@ -13,6 +14,26 @@ type Message = {
 const fallbackReply =
   "ИИ-бот сейчас перегружен. Попробуйте отправить запрос ещё раз через минуту.";
 
+// Валидация и санитизация URL для защиты от XSS
+const isValidUrl = (url: string): boolean => {
+  try {
+    const urlObj = new URL(url.startsWith('http') ? url : `https://${url}`);
+    // Разрешаем только http/https протоколы
+    return urlObj.protocol === 'http:' || urlObj.protocol === 'https:';
+  } catch {
+    return false;
+  }
+};
+
+const sanitizeUrl = (url: string): string => {
+  // Убираем опасные протоколы
+  const cleaned = url.trim().replace(/^javascript:|^data:|^vbscript:/i, '');
+  if (cleaned.startsWith('http://') || cleaned.startsWith('https://')) {
+    return cleaned;
+  }
+  return `https://${cleaned}`;
+};
+
 // Функция для рендеринга сообщения с поддержкой ссылок и форматирования
 const renderFormattedMessage = (content: string) => {
   const parts: (string | React.ReactElement)[] = [];
@@ -21,10 +42,22 @@ const renderFormattedMessage = (content: string) => {
 
   // Обрабатываем markdown ссылки [текст](url) в первую очередь
   const markdownLinkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
-  let markdownMatch;
+  const markdownMatches: Array<{ index: number; text: string; url: string; length: number }> = [];
+  
+  // Собираем все совпадения сначала (избегаем проблем с exec и /g)
+  let match;
+  while ((match = markdownLinkRegex.exec(content)) !== null) {
+    markdownMatches.push({
+      index: match.index,
+      text: match[1],
+      url: match[2],
+      length: match[0].length,
+    });
+  }
+
   let lastIndex = 0;
 
-  while ((markdownMatch = markdownLinkRegex.exec(content)) !== null) {
+  for (const markdownMatch of markdownMatches) {
     // Добавляем текст до ссылки
     if (markdownMatch.index > lastIndex) {
       const beforeText = content.slice(lastIndex, markdownMatch.index);
@@ -33,20 +66,26 @@ const renderFormattedMessage = (content: string) => {
       }
     }
 
-    // Добавляем ссылку
-    parts.push(
-      <a
-        key={`link-${keyCounter++}`}
-        href={markdownMatch[2]}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="text-neo-electric underline hover:text-neo-glow transition-colors"
-      >
-        {markdownMatch[1]}
-      </a>
-    );
+    // Валидируем и санитизируем URL
+    const sanitizedUrl = sanitizeUrl(markdownMatch.url);
+    if (isValidUrl(sanitizedUrl)) {
+      parts.push(
+        <a
+          key={`link-${keyCounter++}`}
+          href={sanitizedUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-neo-electric underline hover:text-neo-glow transition-colors"
+        >
+          {markdownMatch.text}
+        </a>
+      );
+    } else {
+      // Если URL невалидный, показываем как обычный текст
+      parts.push(markdownMatch.text);
+    }
 
-    lastIndex = markdownMatch.index + markdownMatch[0].length;
+    lastIndex = markdownMatch.index + markdownMatch.length;
   }
 
   // Добавляем оставшийся текст после markdown ссылок
@@ -62,10 +101,21 @@ const renderFormattedMessage = (content: string) => {
   } else if (lastIndex === 0) {
     // Если не было markdown ссылок, обрабатываем обычные URL
     const urlRegex = /(https?:\/\/[^\s]+|www\.[^\s]+)/gi;
+    const urlMatches: Array<{ index: number; url: string; length: number }> = [];
+    
+    // Собираем все совпадения
     let urlMatch;
+    while ((urlMatch = urlRegex.exec(remaining)) !== null) {
+      urlMatches.push({
+        index: urlMatch.index,
+        url: urlMatch[0],
+        length: urlMatch[0].length,
+      });
+    }
+
     let urlLastIndex = 0;
 
-    while ((urlMatch = urlRegex.exec(remaining)) !== null) {
+    for (const urlMatch of urlMatches) {
       // Добавляем текст до URL
       if (urlMatch.index > urlLastIndex) {
         const beforeUrl = remaining.slice(urlLastIndex, urlMatch.index);
@@ -74,21 +124,26 @@ const renderFormattedMessage = (content: string) => {
         }
       }
 
-      // Добавляем URL ссылку
-      const url = urlMatch[0].startsWith('http') ? urlMatch[0] : `https://${urlMatch[0]}`;
-      parts.push(
-        <a
-          key={`url-${keyCounter++}`}
-          href={url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-neo-electric underline hover:text-neo-glow transition-colors"
-        >
-          {urlMatch[0]}
-        </a>
-      );
+      // Валидируем и санитизируем URL
+      const sanitizedUrl = sanitizeUrl(urlMatch.url);
+      if (isValidUrl(sanitizedUrl)) {
+        parts.push(
+          <a
+            key={`url-${keyCounter++}`}
+            href={sanitizedUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-neo-electric underline hover:text-neo-glow transition-colors"
+          >
+            {urlMatch.url}
+          </a>
+        );
+      } else {
+        // Если URL невалидный, показываем как обычный текст
+        parts.push(urlMatch.url);
+      }
 
-      urlLastIndex = urlMatch.index + urlMatch[0].length;
+      urlLastIndex = urlMatch.index + urlMatch.length;
     }
 
     // Добавляем оставшийся текст после URL
@@ -198,37 +253,48 @@ export const ChatWidget = () => {
   const [clientId, setClientId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [hasInitialized, setHasInitialized] = useState(false);
+  const abortControllerRef = React.useRef<AbortController | null>(null);
+  const initializationRef = useRef(false); // Для предотвращения race condition
 
   const sessionId = useMemo(() => uuid(), []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const existing = window.localStorage.getItem("ktro_agent_id");
-    if (existing) {
-      setClientId(existing);
-      return;
-    }
-    const generated = uuid();
-    window.localStorage.setItem("ktro_agent_id", generated);
-    document.cookie = `ktro_agent_id=${generated}; max-age=${60 * 60 * 24 * 180}; path=/; SameSite=Lax`;
-    setClientId(generated);
+    const id = ensureClientId();
+    setClientId(id);
   }, []);
 
-  const ensureClientId = () => {
-    if (clientId) return clientId;
-    const generated = uuid();
-    setClientId(generated);
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem("ktro_agent_id", generated);
-      document.cookie = `ktro_agent_id=${generated}; max-age=${60 * 60 * 24 * 180}; path=/; SameSite=Lax`;
+  // Очистка при размонтировании
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
+
+  const getClientId = (): string => {
+    // Если clientId уже установлен, используем его
+    if (clientId && clientId.trim()) {
+      return clientId;
     }
-    return generated;
+    
+    // Используем утилиту ensureClientId
+    const id = ensureClientId();
+    setClientId(id);
+    return id;
   };
 
   const trackEvent = async (event: string, payload?: Record<string, unknown>) => {
-    const id = ensureClientId();
     try {
-      await fetch("/api/analytics", {
+      const id = getClientId();
+      // Отправляем аналитику только если clientId валиден
+      if (!id || !id.trim()) {
+        console.warn("Cannot track event: invalid clientId");
+        return;
+      }
+
+      const response = await fetch("/api/analytics", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -238,8 +304,14 @@ export const ChatWidget = () => {
           payload,
         }),
       });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.warn("Analytics API error:", response.status, errorData);
+      }
     } catch (error) {
-      console.error("analytics track error", error);
+      // Не прерываем работу приложения из-за ошибок аналитики
+      console.warn("analytics track error:", error);
     }
   };
 
@@ -247,17 +319,40 @@ export const ChatWidget = () => {
     const newIsOpen = !isOpen;
     setIsOpen(newIsOpen);
     
+    // Если закрываем чат, отменяем все активные запросы
+    if (!newIsOpen && abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    
     if (!hasOpened) {
       setHasOpened(true);
-      void trackEvent("chat_open");
+      trackEvent("chat_open").catch(err => {
+        console.warn("Failed to track event:", err);
+      });
     }
 
     // Если открываем чат впервые и еще не инициализировали, отправляем пустое сообщение для получения первого вопроса от бота
-    if (newIsOpen && !hasInitialized && messages.length === 0) {
+    if (newIsOpen && !hasInitialized && messages.length === 0 && !isThinking && !initializationRef.current) {
+      // Устанавливаем флаг инициализации сразу для предотвращения race condition
+      initializationRef.current = true;
       setHasInitialized(true);
       setIsThinking(true);
       
-      const id = ensureClientId();
+      // Убеждаемся, что clientId установлен перед отправкой
+      const id = getClientId();
+      
+      if (!id || !id.trim()) {
+        console.error("Cannot initialize chat: invalid clientId");
+        setIsThinking(false);
+        setHasInitialized(false);
+        initializationRef.current = false;
+        return;
+      }
+      
+      // Создаем новый AbortController для этого запроса
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
       
       try {
         const response = await fetch("/api/chat", {
@@ -270,12 +365,25 @@ export const ChatWidget = () => {
             history: [],
             meta: { source: "landing", isInitial: true },
           }),
+          signal: controller.signal,
         });
 
-        if (response.ok) {
-          const data = await response.json();
-          const reply = typeof data?.reply === "string" ? data.reply : fallbackReply;
+        // Проверяем, не был ли запрос отменен
+        if (controller.signal.aborted) {
+          return;
+        }
 
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          console.error("Chat API error:", response.status, errorData);
+          throw new Error(`Chat API responded with ${response.status}: ${errorData.error || 'unknown error'}`);
+        }
+
+        const data = await response.json();
+        const reply = typeof data?.reply === "string" ? data.reply : fallbackReply;
+
+        // Проверяем еще раз, не был ли компонент закрыт
+        if (!controller.signal.aborted) {
           setMessages([
             {
               id: uuid(),
@@ -284,20 +392,38 @@ export const ChatWidget = () => {
               timestamp: Date.now(),
             },
           ]);
-          void trackEvent("chat_message_received", { latencyMs: data?.latencyMs ?? null, initial: true });
+          trackEvent("chat_message_received", { latencyMs: data?.latencyMs ?? null, initial: true }).catch(err => {
+            console.warn("Failed to track event:", err);
+          });
         }
       } catch (error) {
+        // Игнорируем ошибки отмены запроса
+        if (error instanceof Error && error.name === 'AbortError') {
+          initializationRef.current = false;
+          return;
+        }
         console.error("initial chat error", error);
-        setMessages([
-          {
-            id: uuid(),
-            role: "agent",
-            content: fallbackReply,
-            timestamp: Date.now(),
-          },
-        ]);
+        if (!controller.signal.aborted) {
+          setMessages([
+            {
+              id: uuid(),
+              role: "agent",
+              content: fallbackReply,
+              timestamp: Date.now(),
+            },
+          ]);
+        }
       } finally {
-        setIsThinking(false);
+        if (!controller.signal.aborted) {
+          setIsThinking(false);
+        }
+        if (abortControllerRef.current === controller) {
+          abortControllerRef.current = null;
+        }
+        // Сбрасываем флаг инициализации только если запрос не был отменен
+        if (!controller.signal.aborted) {
+          initializationRef.current = false;
+        }
       }
     }
   };
@@ -305,9 +431,14 @@ export const ChatWidget = () => {
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const value = input.trim();
-    if (!value) return;
+    if (!value || isThinking) return; // Предотвращаем двойную отправку
 
-    const id = ensureClientId();
+    const id = getClientId();
+    
+    if (!id || !id.trim()) {
+      console.error("Cannot send message: invalid clientId");
+      return;
+    }
 
     const userMessage: Message = {
       id: uuid(),
@@ -321,7 +452,13 @@ export const ChatWidget = () => {
     setInput("");
     setIsThinking(true);
 
-    void trackEvent("chat_message_sent", { length: value.length });
+    trackEvent("chat_message_sent", { length: value.length }).catch(err => {
+      console.warn("Failed to track event:", err);
+    });
+
+    // Создаем новый AbortController для этого запроса
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
 
     try {
       const response = await fetch("/api/chat", {
@@ -336,39 +473,65 @@ export const ChatWidget = () => {
             .slice(-10),
           meta: { source: "landing", openedAt: messages[0]?.timestamp },
         }),
+        signal: controller.signal,
       });
 
+      // Проверяем, не был ли запрос отменен
+      if (controller.signal.aborted) {
+        return;
+      }
+
       if (!response.ok) {
-        throw new Error(`Chat API responded with ${response.status}`);
+        const errorData = await response.json().catch(() => ({}));
+        console.error("Chat API error:", response.status, errorData);
+        throw new Error(`Chat API responded with ${response.status}: ${errorData.error || 'unknown error'}`);
       }
 
       const data = await response.json();
       const reply = typeof data?.reply === "string" ? data.reply : fallbackReply;
 
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: uuid(),
-          role: "agent",
-          content: reply,
-          timestamp: Date.now(),
-        },
-      ]);
-      void trackEvent("chat_message_received", { latencyMs: data?.latencyMs ?? null });
+      // Проверяем еще раз, не был ли запрос отменен
+      if (!controller.signal.aborted) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: uuid(),
+            role: "agent",
+            content: reply,
+            timestamp: Date.now(),
+          },
+        ]);
+        trackEvent("chat_message_received", { latencyMs: data?.latencyMs ?? null }).catch(err => {
+          console.warn("Failed to track event:", err);
+        });
+      }
     } catch (error) {
+      // Игнорируем ошибки отмены запроса
+      if (error instanceof Error && error.name === 'AbortError') {
+        return;
+      }
       console.error("chat error", error);
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: uuid(),
-          role: "agent",
-          content: fallbackReply,
-          timestamp: Date.now(),
-        },
-      ]);
-      void trackEvent("chat_error", { reason: (error as Error).message });
+      if (!controller.signal.aborted) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: uuid(),
+            role: "agent",
+            content: fallbackReply,
+            timestamp: Date.now(),
+          },
+        ]);
+        trackEvent("chat_error", { reason: (error as Error).message }).catch(err => {
+          console.warn("Failed to track event:", err);
+        });
+      }
     } finally {
-      setIsThinking(false);
+      if (!controller.signal.aborted) {
+        setIsThinking(false);
+      }
+      if (abortControllerRef.current === controller) {
+        abortControllerRef.current = null;
+      }
     }
   };
 

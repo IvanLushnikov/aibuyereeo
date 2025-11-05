@@ -13,16 +13,58 @@ const ALLOWED_EVENTS = new Set([
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
+    let body;
+    try {
+      body = await request.json();
+    } catch (parseError) {
+      console.error("[Analytics] JSON parse error:", parseError);
+      return NextResponse.json(
+        { error: "Invalid JSON in request body" },
+        { status: 400 }
+      );
+    }
+
+    if (!body || typeof body !== "object") {
+      console.error("[Analytics] Invalid body type:", typeof body);
+      return NextResponse.json(
+        { error: "Request body must be a JSON object" },
+        { status: 400 }
+      );
+    }
+
     const event = typeof body?.event === "string" ? body.event : undefined;
 
     if (!event || !ALLOWED_EVENTS.has(event)) {
-      return NextResponse.json({ error: "invalid event" }, { status: 400 });
+      console.error("[Analytics] Invalid event:", event, "Allowed events:", Array.from(ALLOWED_EVENTS));
+      return NextResponse.json(
+        { error: `invalid event. Allowed: ${Array.from(ALLOWED_EVENTS).join(", ")}` },
+        { status: 400 }
+      );
     }
 
-    const clientId = typeof body?.clientId === "string" ? body.clientId : undefined;
-    const sessionId = typeof body?.sessionId === "string" ? body.sessionId : undefined;
-    const payload = typeof body?.payload === "object" && body?.payload ? body.payload : undefined;
+    const clientId = typeof body?.clientId === "string" && body.clientId.trim() ? body.clientId.trim() : undefined;
+    const sessionId = typeof body?.sessionId === "string" && body.sessionId.trim() ? body.sessionId.trim() : undefined;
+    let payload = typeof body?.payload === "object" && body?.payload ? body.payload : undefined;
+
+    // clientId не обязателен, но если передан - должен быть валидным
+    if (body?.clientId !== undefined && !clientId) {
+      console.warn("[Analytics] Empty clientId provided, continuing without it");
+    }
+
+    // Ограничение размера payload для предотвращения проблем с памятью
+    const MAX_PAYLOAD_SIZE = 100 * 1024; // 100KB
+    if (payload) {
+      const payloadString = JSON.stringify(payload);
+      if (payloadString.length > MAX_PAYLOAD_SIZE) {
+        console.warn("[Analytics] Payload too large, truncating:", payloadString.length);
+        // Ограничиваем размер payload
+        payload = { 
+          _truncated: true,
+          _originalSize: payloadString.length,
+          ...Object.fromEntries(Object.entries(payload).slice(0, 10)) // Оставляем только первые 10 полей
+        };
+      }
+    }
 
     await appendEventLog({
       timestamp: new Date().toISOString(),
@@ -34,8 +76,11 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ ok: true });
   } catch (error) {
-    console.error("analytics endpoint error", error);
-    return NextResponse.json({ error: "invalid payload" }, { status: 400 });
+    console.error("[Analytics] endpoint error:", error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "invalid payload" },
+      { status: 400 }
+    );
   }
 }
 

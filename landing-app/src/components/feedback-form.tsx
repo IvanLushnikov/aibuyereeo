@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { v4 as uuid } from "uuid";
+import { ensureClientId } from "@/lib/client-id";
 
 const roles = [
   "Инициатор",
@@ -17,15 +18,6 @@ export const FeedbackForm = () => {
   const [error, setError] = useState<string | null>(null);
   const sessionId = useMemo(() => uuid(), []);
 
-  const ensureClientId = () => {
-    if (typeof window === "undefined") return uuid();
-    const stored = window.localStorage.getItem("ktro_agent_id");
-    if (stored) return stored;
-    const generated = uuid();
-    window.localStorage.setItem("ktro_agent_id", generated);
-    document.cookie = `ktro_agent_id=${generated}; max-age=${60 * 60 * 24 * 180}; path=/; SameSite=Lax`;
-    return generated;
-  };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();

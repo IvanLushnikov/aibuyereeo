@@ -18,7 +18,7 @@ const audience = [
   {
     title: "Специалисты по закупкам",
     description:
-      "Актуальные классификаторы, контроль соответствия ОКПД ↔ КТРУ и журнал проверок.",
+      "Актуальные классификаторы, контроль соответствия ОКПД и КТРУ и журнал проверок.",
     icon: "📊",
   },
 ];
@@ -26,7 +26,7 @@ const audience = [
 const steps = [
   {
     title: "Описываете потребность",
-    text: "Например: нужен монитор 24'' для школы, 10 штук.",
+    text: "Например: нужен монитор 24 дюйма для школы, 10 штук.",
   },
   {
     title: "ИИ-бот уточняет детали",
@@ -52,12 +52,12 @@ const painSolutions = [
     solution: "Бот уточняет обязательные параметры и контролирует соответствие.",
   },
   {
-    pain: "ЕИС отклоняет из‑за несоответствия ОКПД",
+    pain: "ЕИС отклоняет из-за несоответствия ОКПД",
     solution: "ИИ-бот сверяет соответствие и подсвечивает расхождения до отправки.",
   },
   {
     pain: "НМЦК считаете вручную",
-    solution: "Скоро — автоматический расчёт по КП и рыночным данным.",
+    solution: "В разработке: автоматический расчёт по КП и рыночным данным.",
   },
 ];
 
@@ -85,7 +85,7 @@ const faq = [
       "Используем официальные классификаторы КТРУ и ОКПД, обновляем по расписанию и дополняем своими чек-листами.",
   },
   {
-    question: "Это бесплатно?",
+    question: "Бесплатно ли это?",
     answer: "Да, пилот для участников госзакупок бесплатен. Главное — поделиться обратной связью.",
   },
   {
@@ -97,202 +97,233 @@ const faq = [
 
 export default function Home() {
   return (
-    <main className="relative mx-auto flex min-h-screen max-w-6xl flex-col gap-24 px-6 pb-32 pt-16 md:px-10 lg:px-16">
-      <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
-        <div className="animate-float absolute -left-24 top-16 h-72 w-72 rounded-full bg-neo-glow/20 blur-3xl" />
-        <div className="animate-float absolute -right-20 bottom-32 h-80 w-80 rounded-full bg-neo-electric/20 blur-3xl delay-1000" />
+    <main className="relative mx-auto flex min-h-screen max-w-7xl flex-col gap-32 px-4 pb-32 pt-20 sm:px-6 md:px-8 lg:px-12">
+      <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
+        <div className="animate-float absolute -left-24 top-16 h-96 w-96 rounded-full bg-neo-glow/15 blur-3xl" />
+        <div className="animate-float absolute -right-20 bottom-32 h-[32rem] w-[32rem] rounded-full bg-neo-electric/15 blur-3xl delay-1000" />
+        <div className="absolute left-1/2 top-1/2 h-64 w-64 -translate-x-1/2 -translate-y-1/2 rounded-full bg-neo-sunrise/10 blur-3xl" />
       </div>
 
-      <section className="grid gap-12 md:grid-cols-[1.1fr_0.9fr] md:items-center">
-        <div className="space-y-8">
-          <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs uppercase tracking-wide text-white/70">
+      <section className="relative grid gap-16 lg:grid-cols-[1.2fr_1fr] lg:items-center lg:gap-20">
+        <div className="space-y-10">
+          <div className="inline-flex items-center gap-2.5 rounded-full border border-white/20 bg-gradient-to-r from-white/10 to-white/5 px-5 py-2.5 text-xs font-semibold uppercase tracking-wider text-white/90 backdrop-blur-sm">
+            <span className="h-2 w-2 rounded-full bg-neo-electric animate-pulse" />
             ИИ-бот для госзакупок
-          </span>
-          <h1 className="font-display text-4xl leading-tight md:text-5xl lg:text-6xl">
-            Секунды вместо часов: ИИ-бот подбирает КТРУ и характеристики за вас
+          </div>
+          <h1 className="font-display text-5xl leading-[1.1] tracking-tight sm:text-6xl lg:text-7xl">
+            Секунды вместо часов:{" "}
+            <span className="bg-gradient-to-r from-neo-electric via-neo-glow to-neo-sunrise bg-clip-text text-transparent">
+              ИИ-бот подбирает КТРУ
+            </span>{" "}
+            и характеристики за вас
           </h1>
-          <p className="max-w-xl text-lg text-white/75">
-            Опишите закупку по-человечески — ИИ-бот найдёт КТРУ по 44-ФЗ и 223-ФЗ, уточнит
+          <p className="max-w-2xl text-xl leading-relaxed text-white/80">
+            Опишите закупку простыми словами — ИИ-бот найдёт КТРУ по 44-ФЗ и 223-ФЗ, уточнит
             обязательные параметры и проверит ОКПД.
           </p>
-          <div className="flex flex-col gap-4 sm:flex-row">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
             <Link
               href="#chat"
-              className="group relative inline-flex items-center justify-center gap-2 overflow-hidden rounded-full bg-gradient-cta px-10 py-4 text-lg font-bold text-neo-night shadow-[0_0_30px_rgba(255,95,141,0.5)] transition-all hover:-translate-y-1 hover:shadow-[0_0_40px_rgba(255,95,141,0.7)] hover:scale-105"
+              className="group relative inline-flex items-center justify-center gap-3 overflow-hidden rounded-2xl bg-gradient-cta px-8 py-5 text-lg font-bold text-white shadow-[0_0_40px_rgba(255,95,141,0.4)] transition-all hover:-translate-y-1 hover:shadow-[0_0_60px_rgba(255,95,141,0.6)] hover:scale-[1.02]"
             >
               <span className="relative z-10">💬 Попробовать бесплатно</span>
-              <div className="absolute inset-0 animate-pulse bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+              <div className="absolute inset-0 animate-pulse bg-gradient-to-r from-transparent via-white/30 to-transparent" />
             </Link>
             <Link
               href="#how"
-              className="inline-flex items-center justify-center rounded-full border-2 border-white/30 px-8 py-4 text-base font-semibold text-white backdrop-blur-sm transition hover:border-neo-electric hover:bg-white/5 hover:text-neo-electric"
+              className="inline-flex items-center justify-center rounded-2xl border-2 border-white/30 bg-white/5 px-8 py-5 text-base font-semibold text-white backdrop-blur-md transition-all hover:border-neo-electric hover:bg-white/10 hover:text-neo-electric hover:shadow-[0_0_30px_rgba(0,231,255,0.3)]"
             >
               Как это работает
             </Link>
           </div>
-          <div className="flex flex-wrap gap-4">
-            <span className="flex items-center gap-2 rounded-full border border-neo-electric/30 bg-neo-electric/10 px-4 py-2 text-sm font-medium text-neo-electric">
+          <div className="flex flex-wrap gap-3">
+            <span className="flex items-center gap-2.5 rounded-xl border border-neo-electric/40 bg-gradient-to-r from-neo-electric/20 to-neo-electric/10 px-5 py-2.5 text-sm font-semibold text-neo-electric backdrop-blur-sm">
               ⚡ Бесплатно
             </span>
-            <span className="flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-4 py-2 text-sm text-white/70">
+            <span className="flex items-center gap-2.5 rounded-xl border border-white/20 bg-white/5 px-5 py-2.5 text-sm font-medium text-white/80 backdrop-blur-sm">
               🛡️ Без регистрации
             </span>
-            <span className="flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-4 py-2 text-sm text-white/70">
+            <span className="flex items-center gap-2.5 rounded-xl border border-white/20 bg-white/5 px-5 py-2.5 text-sm font-medium text-white/80 backdrop-blur-sm">
               🧠 Обновляемая база КТРУ
             </span>
           </div>
         </div>
-        <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-8 shadow-neon-soft backdrop-blur-xl">
-          <div className="absolute inset-0 bg-gradient-hero opacity-30" />
-          <div className="relative space-y-6">
-            <h2 className="font-display text-2xl">Что умеет ИИ-бот</h2>
-            <ul className="space-y-4 text-sm text-white/75">
-              <li className="flex items-start gap-3">
-                <span className="mt-1 text-lg">🎯</span>
-                Находит точные коды КТРУ под ваш запрос и показывает альтернативы
+        <div className="relative overflow-hidden rounded-3xl border border-white/20 bg-gradient-to-br from-white/10 via-white/5 to-transparent p-10 shadow-[0_20px_60px_rgba(0,231,255,0.15)] backdrop-blur-xl lg:p-12">
+          <div className="absolute inset-0 bg-gradient-hero opacity-20" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(125,47,255,0.3),transparent_70%)]" />
+          <div className="relative space-y-8">
+            <h2 className="font-display text-3xl font-bold text-white">Что умеет ИИ-бот</h2>
+            <ul className="space-y-5 text-base leading-relaxed text-white/85">
+              <li className="flex items-start gap-4">
+                <span className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-red-500/20 to-orange-500/20 text-2xl backdrop-blur-sm">
+                  🎯
+                </span>
+                <span>Находит точные коды КТРУ под ваш запрос и показывает альтернативы</span>
               </li>
-              <li className="flex items-start gap-3">
-                <span className="mt-1 text-lg">🧾</span>
-                Уточняет характеристики и показывает обязательные параметры
+              <li className="flex items-start gap-4">
+                <span className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500/20 to-cyan-500/20 text-2xl backdrop-blur-sm">
+                  🧾
+                </span>
+                <span>Уточняет характеристики и показывает обязательные параметры</span>
               </li>
-              <li className="flex items-start gap-3">
-                <span className="mt-1 text-lg">🛰️</span>
-                Следит за соответствием ОКПД и подсвечивает риски до подачи заявки
+              <li className="flex items-start gap-4">
+                <span className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-green-500/20 to-emerald-500/20 text-2xl backdrop-blur-sm">
+                  🛰️
+                </span>
+                <span>Следит за соответствием ОКПД и подсвечивает риски до подачи заявки</span>
               </li>
             </ul>
           </div>
         </div>
       </section>
 
-      <section id="audience" className="space-y-8">
-        <header className="space-y-3">
-          <p className="text-sm uppercase tracking-[0.2em] text-white/40">
+      <section id="audience" className="space-y-12">
+        <header className="space-y-4">
+          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-neo-electric">
             Для кого
           </p>
-          <h2 className="font-display text-3xl md:text-4xl">ИИ-бот выручает всех участников закупки</h2>
+          <h2 className="font-display text-4xl font-bold leading-tight sm:text-5xl lg:text-6xl">
+            ИИ-бот выручает всех участников закупки
+          </h2>
         </header>
-        <div className="grid gap-6 md:grid-cols-3">
-          {audience.map((item) => (
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {audience.map((item, index) => (
             <div
               key={item.title}
-              className="group relative rounded-3xl border border-white/10 bg-white/5 p-6 shadow-neon-soft backdrop-blur-xl transition hover:-translate-y-2 hover:border-neo-electric/60"
+              className="group relative overflow-hidden rounded-3xl border border-white/20 bg-gradient-to-br from-white/10 to-white/5 p-8 shadow-[0_20px_60px_rgba(0,0,0,0.3)] backdrop-blur-xl transition-all hover:-translate-y-2 hover:border-neo-electric/50 hover:shadow-[0_30px_80px_rgba(0,231,255,0.2)]"
             >
-              <div className="absolute -right-6 -top-6 h-16 w-16 rounded-full bg-neo-electric/20 blur-2xl transition group-hover:bg-neo-glow/40" />
-              <div className="relative space-y-3">
-                <span className="text-3xl">{item.icon}</span>
-                <h3 className="font-display text-xl">{item.title}</h3>
-                <p className="text-sm text-white/70">{item.description}</p>
+              <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-gradient-to-br from-neo-electric/30 to-neo-glow/30 blur-3xl transition-all group-hover:scale-150 group-hover:opacity-60" />
+              <div className="relative space-y-4">
+                <div className="text-4xl">{item.icon}</div>
+                <h3 className="font-display text-2xl font-bold">{item.title}</h3>
+                <p className="text-base leading-relaxed text-white/75">{item.description}</p>
               </div>
             </div>
           ))}
         </div>
       </section>
 
-      <section id="how" className="space-y-8">
-        <header className="space-y-3">
-          <p className="text-sm uppercase tracking-[0.2em] text-white/40">Процесс</p>
-          <h2 className="font-display text-3xl md:text-4xl">Как ИИ-бот работает с вашим запросом</h2>
+      <section id="how" className="space-y-12">
+        <header className="space-y-4">
+          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-neo-electric">Процесс</p>
+          <h2 className="font-display text-4xl font-bold leading-tight sm:text-5xl lg:text-6xl">
+            Как ИИ-бот работает с вашим запросом
+          </h2>
         </header>
-        <div className="grid gap-6 md:grid-cols-4">
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {steps.map((step, index) => (
             <div
               key={step.title}
-              className="relative flex flex-col gap-3 rounded-3xl border border-white/10 bg-white/5 p-6 text-sm text-white/70 shadow-neon-soft backdrop-blur-xl"
+              className="group relative flex flex-col gap-4 overflow-hidden rounded-3xl border border-white/20 bg-gradient-to-br from-white/10 to-white/5 p-8 text-base shadow-[0_20px_60px_rgba(0,0,0,0.3)] backdrop-blur-xl transition-all hover:-translate-y-1 hover:border-neo-electric/50 hover:shadow-[0_30px_80px_rgba(0,231,255,0.15)]"
             >
-              <span className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-white/10 font-display text-lg text-white/80">
-                0{index + 1}
-              </span>
-              <h3 className="font-display text-lg text-white">{step.title}</h3>
-              <p>{step.text}</p>
-            </div>
-          ))}
-        </div>
-        <div className="flex justify-center pt-2">
-          <Link
-            href="#chat"
-            className="group inline-flex items-center gap-2 rounded-full border-2 border-neo-electric bg-neo-electric/10 px-6 py-2.5 text-sm font-semibold text-neo-electric backdrop-blur-sm transition hover:bg-neo-electric/20 hover:shadow-[0_0_20px_rgba(0,231,255,0.4)]"
-          >
-            <span>Попробовать прямо сейчас</span>
-            <span className="transition group-hover:translate-x-1">→</span>
-          </Link>
-        </div>
-      </section>
-
-      <section className="space-y-8">
-        <header className="space-y-3">
-          <p className="text-sm uppercase tracking-[0.2em] text-white/40">Закрываем боли</p>
-          <h2 className="font-display text-3xl md:text-4xl">Решаем реальные задачи из практики</h2>
-        </header>
-        <div className="grid gap-6 md:grid-cols-2">
-          {painSolutions.map((item) => (
-            <div
-              key={item.pain}
-              className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-neon-soft backdrop-blur-xl"
-            >
-              <p className="text-sm uppercase tracking-[0.3em] text-neo-electric">
-                Боль
-              </p>
-              <h3 className="mt-2 font-display text-xl">{item.pain}</h3>
-              <p className="mt-4 text-sm text-white/70">{item.solution}</p>
+              <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl border-2 border-white/30 bg-gradient-to-br from-neo-electric/20 to-neo-glow/20 font-display text-2xl font-bold text-white backdrop-blur-sm transition-all group-hover:scale-110 group-hover:border-neo-electric group-hover:bg-neo-electric/30">
+                {index + 1}
+              </div>
+              <h3 className="font-display text-xl font-bold text-white">{step.title}</h3>
+              <p className="leading-relaxed text-white/75">{step.text}</p>
             </div>
           ))}
         </div>
         <div className="flex justify-center pt-4">
           <Link
             href="#chat"
-            className="group inline-flex items-center gap-2 rounded-full border-2 border-neo-electric bg-neo-electric/10 px-8 py-3 text-base font-semibold text-neo-electric backdrop-blur-sm transition hover:bg-neo-electric/20 hover:shadow-[0_0_20px_rgba(0,231,255,0.4)]"
+            className="group inline-flex items-center gap-3 rounded-2xl border-2 border-neo-electric bg-gradient-to-r from-neo-electric/20 to-neo-electric/10 px-8 py-4 text-base font-semibold text-neo-electric backdrop-blur-md transition-all hover:from-neo-electric/30 hover:to-neo-electric/20 hover:shadow-[0_0_40px_rgba(0,231,255,0.4)]"
           >
-            <span>Попробовать решить вашу задачу</span>
-            <span className="transition group-hover:translate-x-1">→</span>
+            <span>Попробовать прямо сейчас</span>
+            <span className="text-xl transition-transform group-hover:translate-x-1">→</span>
           </Link>
         </div>
       </section>
 
-      <section className="space-y-8">
-        <header className="space-y-3">
-          <p className="text-sm uppercase tracking-[0.2em] text-white/40">Что внутри</p>
-          <h2 className="font-display text-3xl md:text-4xl">Технологии и возможности ИИ-бота</h2>
+      <section className="space-y-12">
+        <header className="space-y-4">
+          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-neo-electric">Решаем проблемы</p>
+          <h2 className="font-display text-4xl font-bold leading-tight sm:text-5xl lg:text-6xl">
+            Решаем реальные задачи из практики
+          </h2>
         </header>
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-6 lg:grid-cols-2">
+          {painSolutions.map((item) => (
+            <div
+              key={item.pain}
+              className="group relative overflow-hidden rounded-3xl border border-white/20 bg-gradient-to-br from-white/10 to-white/5 p-8 shadow-[0_20px_60px_rgba(0,0,0,0.3)] backdrop-blur-xl transition-all hover:-translate-y-1 hover:border-neo-sunrise/50 hover:shadow-[0_30px_80px_rgba(255,95,141,0.15)]"
+            >
+              <div className="absolute inset-0 bg-gradient-to-br from-neo-sunrise/5 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
+              <div className="relative">
+                <p className="text-xs font-bold uppercase tracking-[0.3em] text-neo-sunrise">
+                  Боль
+                </p>
+                <h3 className="mt-3 font-display text-2xl font-bold text-white">{item.pain}</h3>
+                <div className="mt-6 flex items-start gap-3">
+                  <span className="mt-1 text-2xl">→</span>
+                  <p className="text-base leading-relaxed text-white/80">{item.solution}</p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="flex justify-center pt-4">
+          <Link
+            href="#chat"
+            className="group inline-flex items-center gap-3 rounded-2xl border-2 border-neo-sunrise bg-gradient-to-r from-neo-sunrise/20 to-neo-sunrise/10 px-8 py-4 text-base font-semibold text-neo-sunrise backdrop-blur-md transition-all hover:from-neo-sunrise/30 hover:to-neo-sunrise/20 hover:shadow-[0_0_40px_rgba(255,95,141,0.4)]"
+          >
+            <span>Попробовать решить вашу задачу</span>
+            <span className="text-xl transition-transform group-hover:translate-x-1">→</span>
+          </Link>
+        </div>
+      </section>
+
+      <section className="space-y-12">
+        <header className="space-y-4">
+          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-neo-electric">Что внутри</p>
+          <h2 className="font-display text-4xl font-bold leading-tight sm:text-5xl lg:text-6xl">
+            Технологии и возможности ИИ-бота
+          </h2>
+        </header>
+        <div className="grid gap-4 sm:grid-cols-2">
           {features.map((feature) => (
             <div
               key={feature}
-              className="flex items-center gap-3 rounded-3xl border border-white/10 bg-white/5 p-5 text-sm text-white/75 shadow-neon-soft backdrop-blur-xl"
+              className="group flex items-center gap-4 rounded-2xl border border-white/20 bg-gradient-to-br from-white/10 to-white/5 p-6 text-base shadow-[0_20px_60px_rgba(0,0,0,0.3)] backdrop-blur-xl transition-all hover:-translate-y-1 hover:border-neo-electric/50 hover:shadow-[0_30px_80px_rgba(0,231,255,0.15)]"
             >
-              <span className="text-lg text-neo-electric">✶</span>
-              <span>{feature}</span>
+              <span className="text-2xl text-neo-electric transition-transform group-hover:scale-125">✶</span>
+              <span className="font-medium text-white/85">{feature}</span>
             </div>
           ))}
         </div>
       </section>
 
-      <section className="space-y-8">
-        <header className="space-y-3">
-          <p className="text-sm uppercase tracking-[0.2em] text-white/40">FAQ</p>
-          <h2 className="font-display text-3xl md:text-4xl">Вопросы, которые задают чаще всего</h2>
+      <section className="space-y-12">
+        <header className="space-y-4">
+          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-neo-electric">FAQ</p>
+          <h2 className="font-display text-4xl font-bold leading-tight sm:text-5xl lg:text-6xl">
+            Часто задаваемые вопросы
+          </h2>
         </header>
         <div className="space-y-4">
           {faq.map((item) => (
             <details
               key={item.question}
-              className="group rounded-3xl border border-white/10 bg-white/5 p-6 shadow-neon-soft backdrop-blur-xl"
+              className="group rounded-2xl border border-white/20 bg-gradient-to-br from-white/10 to-white/5 p-6 shadow-[0_20px_60px_rgba(0,0,0,0.3)] backdrop-blur-xl transition-all hover:border-neo-electric/50 open:border-neo-electric/50"
             >
-              <summary className="flex cursor-pointer items-center justify-between gap-4 font-display text-lg text-white">
+              <summary className="flex cursor-pointer items-center justify-between gap-4 font-display text-lg font-semibold text-white">
                 {item.question}
-                <span className="text-xl text-neo-electric transition group-open:rotate-45">+</span>
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-neo-electric/20 text-2xl font-light text-neo-electric transition-transform group-open:rotate-45 group-open:bg-neo-electric/30">
+                  +
+                </span>
               </summary>
-              <p className="mt-4 text-sm text-white/70">{item.answer}</p>
+              <p className="mt-4 text-base leading-relaxed text-white/75">{item.answer}</p>
             </details>
           ))}
         </div>
-        <div className="relative overflow-hidden rounded-3xl border-2 border-neo-electric/50 bg-gradient-to-br from-neo-electric/10 to-neo-glow/10 p-8 text-center shadow-[0_0_40px_rgba(0,231,255,0.3)] backdrop-blur-xl">
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent animate-pulse" />
-          <div className="relative space-y-4">
-            <h3 className="font-display text-2xl text-white">Готовы попробовать?</h3>
-            <p className="text-white/80">Начните прямо сейчас — это бесплатно и займёт меньше минуты</p>
+        <div className="relative overflow-hidden rounded-3xl border-2 border-neo-electric/50 bg-gradient-to-br from-neo-electric/20 via-neo-glow/10 to-neo-sunrise/10 p-12 text-center shadow-[0_0_60px_rgba(0,231,255,0.3)] backdrop-blur-xl">
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-pulse" />
+          <div className="relative space-y-6">
+            <h3 className="font-display text-3xl font-bold text-white sm:text-4xl">Готовы попробовать?</h3>
+            <p className="mx-auto max-w-2xl text-lg text-white/90">Начните прямо сейчас — это бесплатно и займёт меньше минуты</p>
             <Link
               href="#chat"
-              className="inline-flex items-center gap-2 rounded-full bg-gradient-cta px-10 py-4 text-lg font-bold text-neo-night shadow-[0_0_30px_rgba(255,95,141,0.5)] transition-all hover:-translate-y-1 hover:shadow-[0_0_40px_rgba(255,95,141,0.7)] hover:scale-105"
+              className="inline-flex items-center gap-3 rounded-2xl bg-gradient-cta px-10 py-5 text-lg font-bold text-white shadow-[0_0_40px_rgba(255,95,141,0.5)] transition-all hover:-translate-y-1 hover:shadow-[0_0_60px_rgba(255,95,141,0.7)] hover:scale-[1.02]"
             >
               <span>💬 Начать чат с ботом</span>
             </Link>
@@ -300,30 +331,30 @@ export default function Home() {
         </div>
       </section>
 
-      <section id="feedback" className="grid gap-10 md:grid-cols-[1fr_1fr]">
-        <div className="space-y-4">
-          <p className="text-sm uppercase tracking-[0.2em] text-white/40">Связаться</p>
-          <h2 className="font-display text-3xl md:text-4xl">
-            Единая платформа для всех участников закупочного процесса
+      <section id="feedback" className="grid gap-12 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
+        <div className="space-y-6">
+          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-neo-electric">Связаться</p>
+          <h2 className="font-display text-4xl font-bold leading-tight sm:text-5xl lg:text-6xl">
+            Хотите внедрить ИИ-бота у себя?
           </h2>
-          <p className="text-lg text-white/80 font-medium">
-            От инициатора до руководителя — автоматизируйте весь закупочный процесс
+          <p className="text-xl leading-relaxed text-white/80">
+            Оставьте контакт — пришлём сценарии внедрения и подключим к пилоту
           </p>
         </div>
         <FeedbackForm />
       </section>
 
-      <footer className="border-t border-white/10 pt-10 text-sm text-white/50">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <p>© {new Date().getFullYear()} ИИ-бот для госзакупок. Все права защищены.</p>
-          <div className="flex flex-wrap gap-4">
-            <Link href="mailto:team@semion.ai" className="hover:text-neo-electric">
+      <footer className="border-t border-white/20 pt-12 text-sm text-white/60">
+        <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+          <p className="font-medium">© {new Date().getFullYear()} ИИ-бот для госзакупок. Все права защищены.</p>
+          <div className="flex flex-wrap gap-6">
+            <Link href="mailto:team@semion.ai" className="font-medium transition-colors hover:text-neo-electric">
               team@semion.ai
             </Link>
-            <Link href="https://t.me/semion_support" className="hover:text-neo-electric">
+            <Link href="https://t.me/semion_support" className="font-medium transition-colors hover:text-neo-electric">
               Telegram поддержка
             </Link>
-            <span>Политика конфиденциальности</span>
+            <span className="font-medium">Политика конфиденциальности</span>
           </div>
         </div>
       </footer>

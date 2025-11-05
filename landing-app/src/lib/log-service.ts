@@ -1,5 +1,4 @@
-import { mkdir, stat, writeFile } from "fs/promises";
-import { appendFileSync } from "node:fs";
+import { mkdir, stat, writeFile, appendFile } from "fs/promises";
 import path from "node:path";
 
 type LogType = "chat" | "events";
@@ -49,25 +48,30 @@ export async function appendChatLog(args: {
   status: "ok" | "error" | "fallback";
   meta?: Record<string, unknown>;
 }) {
-  const filePath = getFilePath("chat", new Date(args.timestamp));
-  await ensureDir(filePath);
-  const line = composeLine([
-    args.timestamp,
-    args.clientId,
-    args.direction,
-    args.message,
-    args.latencyMs ?? "",
-    args.status,
-    args.meta ? JSON.stringify(args.meta) : "",
-  ]);
-  appendFileSync(filePath, line, { encoding: "utf-8" });
-  console.log(`[LOG] Записано в ${filePath}:`, {
-    timestamp: args.timestamp,
-    clientId: args.clientId,
-    direction: args.direction,
-    status: args.status,
-    messageLength: args.message.length,
-  });
+  try {
+    const filePath = getFilePath("chat", new Date(args.timestamp));
+    await ensureDir(filePath);
+    const line = composeLine([
+      args.timestamp,
+      args.clientId,
+      args.direction,
+      args.message,
+      args.latencyMs ?? "",
+      args.status,
+      args.meta ? JSON.stringify(args.meta) : "",
+    ]);
+    await appendFile(filePath, line, { encoding: "utf-8" });
+    console.log(`[LOG] Записано в ${filePath}:`, {
+      timestamp: args.timestamp,
+      clientId: args.clientId,
+      direction: args.direction,
+      status: args.status,
+      messageLength: args.message.length,
+    });
+  } catch (error) {
+    console.error(`[LOG] Ошибка записи chat log:`, error instanceof Error ? error.message : String(error));
+    // Не прерываем выполнение при ошибке логирования
+  }
 }
 
 export async function appendEventLog(args: {
@@ -77,21 +81,26 @@ export async function appendEventLog(args: {
   event: string;
   payload?: Record<string, unknown>;
 }) {
-  const filePath = getFilePath("events", new Date(args.timestamp));
-  await ensureDir(filePath);
-  const line = composeLine([
-    args.timestamp,
-    args.clientId ?? "",
-    args.sessionId ?? "",
-    args.event,
-    args.payload ? JSON.stringify(args.payload) : "",
-  ]);
-  appendFileSync(filePath, line, { encoding: "utf-8" });
-  console.log(`[LOG] Записано событие в ${filePath}:`, {
-    timestamp: args.timestamp,
-    clientId: args.clientId,
-    event: args.event,
-  });
+  try {
+    const filePath = getFilePath("events", new Date(args.timestamp));
+    await ensureDir(filePath);
+    const line = composeLine([
+      args.timestamp,
+      args.clientId ?? "",
+      args.sessionId ?? "",
+      args.event,
+      args.payload ? JSON.stringify(args.payload) : "",
+    ]);
+    await appendFile(filePath, line, { encoding: "utf-8" });
+    console.log(`[LOG] Записано событие в ${filePath}:`, {
+      timestamp: args.timestamp,
+      clientId: args.clientId,
+      event: args.event,
+    });
+  } catch (error) {
+    console.error(`[LOG] Ошибка записи event log:`, error instanceof Error ? error.message : String(error));
+    // Не прерываем выполнение при ошибке логирования
+  }
 }
 
 export async function writeHealthCheck() {
