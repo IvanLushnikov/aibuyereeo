@@ -10,11 +10,185 @@ type Message = {
   timestamp: number;
 };
 
-const initialAgentMessage =
-  "Привет! Я ИИ-бот для подбора КТРУ. Расскажите, что хотите закупить — подберу коды и характеристики.";
-
 const fallbackReply =
   "ИИ-бот сейчас перегружен. Попробуйте отправить запрос ещё раз через минуту.";
+
+// Функция для рендеринга сообщения с поддержкой ссылок и форматирования
+const renderFormattedMessage = (content: string) => {
+  const parts: (string | JSX.Element)[] = [];
+  let remaining = content;
+  let keyCounter = 0;
+
+  // Обрабатываем markdown ссылки [текст](url) в первую очередь
+  const markdownLinkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
+  let markdownMatch;
+  let lastIndex = 0;
+
+  while ((markdownMatch = markdownLinkRegex.exec(content)) !== null) {
+    // Добавляем текст до ссылки
+    if (markdownMatch.index > lastIndex) {
+      const beforeText = content.slice(lastIndex, markdownMatch.index);
+      if (beforeText) {
+        parts.push(beforeText);
+      }
+    }
+
+    // Добавляем ссылку
+    parts.push(
+      <a
+        key={`link-${keyCounter++}`}
+        href={markdownMatch[2]}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-neo-electric underline hover:text-neo-glow transition-colors"
+      >
+        {markdownMatch[1]}
+      </a>
+    );
+
+    lastIndex = markdownMatch.index + markdownMatch[0].length;
+  }
+
+  // Добавляем оставшийся текст после markdown ссылок
+  if (lastIndex < content.length) {
+    remaining = content.slice(lastIndex);
+  } else if (lastIndex === 0) {
+    remaining = content;
+  }
+
+  // Если были markdown ссылки, обрабатываем оставшийся текст отдельно
+  if (lastIndex > 0 && remaining) {
+    parts.push(remaining);
+  } else if (lastIndex === 0) {
+    // Если не было markdown ссылок, обрабатываем обычные URL
+    const urlRegex = /(https?:\/\/[^\s]+|www\.[^\s]+)/gi;
+    let urlMatch;
+    let urlLastIndex = 0;
+
+    while ((urlMatch = urlRegex.exec(remaining)) !== null) {
+      // Добавляем текст до URL
+      if (urlMatch.index > urlLastIndex) {
+        const beforeUrl = remaining.slice(urlLastIndex, urlMatch.index);
+        if (beforeUrl) {
+          parts.push(beforeUrl);
+        }
+      }
+
+      // Добавляем URL ссылку
+      const url = urlMatch[0].startsWith('http') ? urlMatch[0] : `https://${urlMatch[0]}`;
+      parts.push(
+        <a
+          key={`url-${keyCounter++}`}
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-neo-electric underline hover:text-neo-glow transition-colors"
+        >
+          {urlMatch[0]}
+        </a>
+      );
+
+      urlLastIndex = urlMatch.index + urlMatch[0].length;
+    }
+
+    // Добавляем оставшийся текст после URL
+    if (urlLastIndex < remaining.length) {
+      parts.push(remaining.slice(urlLastIndex));
+    } else if (urlLastIndex === 0) {
+      parts.push(remaining);
+    }
+  }
+
+  // Обрабатываем форматирование в текстовых частях
+  const processFormatting = (text: string): (string | JSX.Element)[] => {
+    const result: (string | JSX.Element)[] = [];
+    let pos = 0;
+    const textLength = text.length;
+
+    while (pos < textLength) {
+      // Ищем жирный текст **text**
+      const boldMatch = text.slice(pos).match(/^\*\*([^*]+)\*\*/);
+      if (boldMatch) {
+        result.push(<strong key={`bold-${keyCounter++}`} className="font-bold">{boldMatch[1]}</strong>);
+        pos += boldMatch[0].length;
+        continue;
+      }
+
+      // Ищем код `code`
+      const codeMatch = text.slice(pos).match(/^`([^`]+)`/);
+      if (codeMatch) {
+        result.push(
+          <code key={`code-${keyCounter++}`} className="bg-white/10 px-1.5 py-0.5 rounded text-xs font-mono">
+            {codeMatch[1]}
+          </code>
+        );
+        pos += codeMatch[0].length;
+        continue;
+      }
+
+      // Ищем курсив *text* (но не **text**)
+      // Проверяем, что перед * нет другого *
+      const italicStart = text.slice(pos).indexOf('*');
+      if (italicStart === 0 && pos > 0 && text[pos - 1] !== '*' && pos + 1 < textLength && text[pos + 1] !== '*') {
+        const italicEnd = text.slice(pos + 1).indexOf('*');
+        if (italicEnd !== -1 && text.slice(pos + 1, pos + 1 + italicEnd).indexOf('*') === -1) {
+          const italicText = text.slice(pos + 1, pos + 1 + italicEnd);
+          if (italicText) {
+            result.push(<em key={`italic-${keyCounter++}`} className="italic">{italicText}</em>);
+            pos += italicEnd + 2;
+            continue;
+          }
+        }
+      }
+
+      // Обычный текст до следующего форматирования
+      const nextBold = text.slice(pos).indexOf('**');
+      const nextCode = text.slice(pos).indexOf('`');
+      // Ищем одиночный * который не является частью **
+      let nextItalic = -1;
+      for (let i = pos; i < textLength - 1; i++) {
+        if (text[i] === '*' && text[i + 1] !== '*' && (i === 0 || text[i - 1] !== '*')) {
+          const endItalic = text.slice(i + 1).indexOf('*');
+          if (endItalic !== -1 && text.slice(i + 1, i + 1 + endItalic).indexOf('*') === -1) {
+            nextItalic = i - pos;
+            break;
+          }
+        }
+      }
+      
+      const nextPos = [
+        nextBold !== -1 ? nextBold : Infinity,
+        nextCode !== -1 ? nextCode : Infinity,
+        nextItalic !== -1 ? nextItalic : Infinity
+      ].filter(p => p !== Infinity);
+
+      if (nextPos.length > 0) {
+        const minPos = Math.min(...nextPos);
+        if (minPos > 0) {
+          result.push(text.slice(pos, pos + minPos));
+          pos += minPos;
+        } else {
+          result.push(text[pos]);
+          pos++;
+        }
+      } else {
+        result.push(text.slice(pos));
+        break;
+      }
+    }
+
+    return result.length > 0 ? result : [text];
+  };
+
+  // Обрабатываем форматирование в каждой текстовой части
+  return parts.map((part, idx) => {
+    if (typeof part === 'string') {
+      const formatted = processFormatting(part);
+      return <span key={`part-${idx}`}>{formatted}</span>;
+    }
+    return part;
+  });
+};
 
 export const ChatWidget = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -22,14 +196,8 @@ export const ChatWidget = () => {
   const [input, setInput] = useState("");
   const [isThinking, setIsThinking] = useState(false);
   const [clientId, setClientId] = useState<string | null>(null);
-  const [messages, setMessages] = useState<Message[]>(() => [
-    {
-      id: uuid(),
-      role: "agent",
-      content: initialAgentMessage,
-      timestamp: Date.now(),
-    },
-  ]);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [hasInitialized, setHasInitialized] = useState(false);
 
   const sessionId = useMemo(() => uuid(), []);
 
@@ -75,11 +243,62 @@ export const ChatWidget = () => {
     }
   };
 
-  const handleToggle = () => {
-    setIsOpen((prev) => !prev);
+  const handleToggle = async () => {
+    const newIsOpen = !isOpen;
+    setIsOpen(newIsOpen);
+    
     if (!hasOpened) {
       setHasOpened(true);
       void trackEvent("chat_open");
+    }
+
+    // Если открываем чат впервые и еще не инициализировали, отправляем пустое сообщение для получения первого вопроса от бота
+    if (newIsOpen && !hasInitialized && messages.length === 0) {
+      setHasInitialized(true);
+      setIsThinking(true);
+      
+      const id = ensureClientId();
+      
+      try {
+        const response = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            clientId: id,
+            sessionId,
+            message: "",
+            history: [],
+            meta: { source: "landing", isInitial: true },
+          }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const reply = typeof data?.reply === "string" ? data.reply : fallbackReply;
+
+          setMessages([
+            {
+              id: uuid(),
+              role: "agent",
+              content: reply,
+              timestamp: Date.now(),
+            },
+          ]);
+          void trackEvent("chat_message_received", { latencyMs: data?.latencyMs ?? null, initial: true });
+        }
+      } catch (error) {
+        console.error("initial chat error", error);
+        setMessages([
+          {
+            id: uuid(),
+            role: "agent",
+            content: fallbackReply,
+            timestamp: Date.now(),
+          },
+        ]);
+      } finally {
+        setIsThinking(false);
+      }
     }
   };
 
@@ -158,9 +377,9 @@ export const ChatWidget = () => {
       <button
         type="button"
         onClick={handleToggle}
-        className="group fixed bottom-6 right-6 z-40 flex h-14 w-14 items-center justify-center gap-1.5 overflow-hidden rounded-full bg-gradient-cta text-black shadow-[0_0_30px_rgba(255,95,141,0.6)] transition-all duration-300 hover:scale-110 hover:shadow-[0_0_40px_rgba(255,95,141,0.8)] focus:outline-none focus:ring-4 focus:ring-neo-electric/40 md:h-16 md:w-16"
+        className="group fixed bottom-6 right-6 z-40 flex items-center justify-center gap-2 overflow-hidden rounded-full bg-gradient-cta px-6 py-3 text-base font-bold text-neo-night shadow-[0_0_30px_rgba(255,95,141,0.6)] transition-all duration-300 hover:scale-105 hover:shadow-[0_0_40px_rgba(255,95,141,0.8)] focus:outline-none focus:ring-4 focus:ring-neo-electric/40 md:px-8 md:py-4 md:text-lg"
       >
-        <span className="relative z-10 text-2xl">💬</span>
+        <span className="relative z-10">🎯 Подобрать код</span>
         <div className="absolute inset-0 animate-pulse bg-gradient-to-r from-transparent via-white/20 to-transparent" />
       </button>
 
@@ -192,7 +411,13 @@ export const ChatWidget = () => {
                       : "bg-white/5 text-white"
                   }`}
                 >
-                  {message.content}
+                  {message.role === "agent" ? (
+                    <div className="whitespace-pre-wrap break-words">
+                      {renderFormattedMessage(message.content)}
+                    </div>
+                  ) : (
+                    message.content
+                  )}
                 </div>
               </div>
             ))}

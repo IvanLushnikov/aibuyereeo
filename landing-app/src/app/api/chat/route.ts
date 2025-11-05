@@ -52,10 +52,19 @@ export async function POST(request: Request) {
           }))
       : [];
     const meta = typeof body?.meta === "object" && body?.meta ? body.meta : undefined;
+    const isInitial = meta?.isInitial === true;
 
-    if (!clientId || !message) {
+    if (!clientId) {
       return NextResponse.json(
-        { error: "clientId and message are required" },
+        { error: "clientId is required" },
+        { status: 400 }
+      );
+    }
+
+    // Разрешаем пустое сообщение только для инициализации
+    if (!isInitial && !message) {
+      return NextResponse.json(
+        { error: "message is required" },
         { status: 400 }
       );
     }
@@ -86,15 +95,18 @@ export async function POST(request: Request) {
       );
     }
 
-    console.log(`[API] Получено сообщение от ${clientId}:`, { messageLength: message.length, hasHistory: history.length > 0 });
-    await appendChatLog({
-      timestamp: receivedAt.toISOString(),
-      clientId,
-      direction: "user",
-      message,
-      status: "ok",
-      meta,
-    });
+    console.log(`[API] Получено сообщение от ${clientId}:`, { messageLength: message.length, hasHistory: history.length > 0, isInitial });
+    // Логируем только если это не инициализация или есть текст сообщения
+    if (!isInitial || message) {
+      await appendChatLog({
+        timestamp: receivedAt.toISOString(),
+        clientId,
+        direction: "user",
+        message: message || "[initial request]",
+        status: "ok",
+        meta,
+      });
+    }
 
     const webhookUrl = process.env.N8N_WEBHOOK_URL;
     const secret = process.env.N8N_SECRET;
