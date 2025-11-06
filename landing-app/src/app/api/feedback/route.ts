@@ -4,6 +4,7 @@ import { appendEventLog } from "@/lib/log-service";
 type FeedbackPayload = {
   name: string;
   email: string;
+  phone?: string;
   role: string;
   comment?: string;
   clientId?: string;
@@ -25,6 +26,7 @@ function validatePayload(data: Partial<FeedbackPayload>) {
 
   const name = sanitizeText(data.name, 200);
   const email = sanitizeText(data.email, 320);
+  const phone = sanitizeText(data.phone ?? "", 32);
   const role = sanitizeText(data.role, 200);
   const comment = sanitizeText(data.comment ?? "", 2000);
 
@@ -43,6 +45,7 @@ function validatePayload(data: Partial<FeedbackPayload>) {
     payload: {
       name,
       email,
+      phone: phone || undefined,
       role,
       comment,
       clientId: sanitizeText(data.clientId ?? "", 512) || undefined,

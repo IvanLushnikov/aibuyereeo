@@ -34,6 +34,7 @@ export const FeedbackForm = ({ abExperimentId, abPlacement, abVariant }: Feedbac
   const [state, setState] = useState<FormState>("idle");
   const [error, setError] = useState<string | null>(null);
   const [emailError, setEmailError] = useState<string | null>(null);
+  const [phoneError, setPhoneError] = useState<string | null>(null);
   const sessionId = useMemo(() => uuid(), []);
   const honeypotRef = useRef<HTMLInputElement>(null);
 
@@ -42,6 +43,7 @@ export const FeedbackForm = ({ abExperimentId, abPlacement, abVariant }: Feedbac
     event.preventDefault();
     setError(null);
     setEmailError(null);
+    setPhoneError(null);
 
     // Проверка honeypot (защита от ботов)
     if (honeypotRef.current && honeypotRef.current.value) {
@@ -61,11 +63,22 @@ export const FeedbackForm = ({ abExperimentId, abPlacement, abVariant }: Feedbac
     const form = new FormData(formElement);
     const payload = Object.fromEntries(form.entries());
     const email = String(payload.email || "").trim();
+    const phone = String(payload.phone || "").trim();
 
     // Валидация email на клиенте
     if (!isValidEmail(email)) {
       setEmailError("Введите корректный адрес электронной почты.");
       return;
+    }
+
+    // Валидация телефона (необязательное поле, но если заполнено — проверим)
+    if (phone) {
+      const digits = phone.replace(/[^\d+]/g, "");
+      // допускаем +7/8 и 10-12 цифр
+      if (!/^\+?\d{10,12}$/.test(digits)) {
+        setPhoneError("Введите корректный номер телефона.");
+        return;
+      }
     }
 
     try {
@@ -86,6 +99,7 @@ export const FeedbackForm = ({ abExperimentId, abPlacement, abVariant }: Feedbac
         body: JSON.stringify({
           name: payload.name,
           email,
+          phone,
           role: payload.role,
           comment: payload.comment,
           clientId,
@@ -163,9 +177,9 @@ export const FeedbackForm = ({ abExperimentId, abPlacement, abVariant }: Feedbac
       onSubmit={handleSubmit}
       className="rounded-3xl border border-white/10 bg-white/5 p-10 shadow-neon-soft backdrop-blur-xl"
     >
-      <h3 className="font-display text-2xl">Хотите протестировать на ваших задачах?</h3>
+      <h3 className="font-display text-2xl">Свяжемся для автоматизации закупок</h3>
       <p className="mt-2 text-sm text-white/70">
-        Оставьте контакт — пришлём сценарии внедрения и подключим к пилоту
+        Оставьте контакт — обсудим процесс и предложим план внедрения
       </p>
       {/* Honeypot поле (скрыто от пользователей, но видимо ботам) */}
       <input
@@ -214,6 +228,27 @@ export const FeedbackForm = ({ abExperimentId, abPlacement, abVariant }: Feedbac
           )}
         </label>
         <label className="flex flex-col gap-2 text-sm">
+          Телефон (по желанию)
+          <input
+            type="tel"
+            name="phone"
+            className={`rounded-2xl border px-4 py-3 text-white placeholder:text-white/40 focus:border-neo-electric focus:outline-none ${
+              phoneError ? "border-red-400 bg-white/10" : "border-white/10 bg-white/10"
+            }`}
+            placeholder="+7 999 123‑45‑67"
+            aria-invalid={phoneError ? "true" : "false"}
+            aria-describedby={phoneError ? "phone-error" : undefined}
+            onChange={() => {
+              if (phoneError) setPhoneError(null);
+            }}
+          />
+          {phoneError && (
+            <span id="phone-error" className="text-xs text-red-300" role="alert">
+              {phoneError}
+            </span>
+          )}
+        </label>
+        <label className="flex flex-col gap-2 text-sm">
           Ваша роль
           <select
             name="role"
@@ -233,7 +268,7 @@ export const FeedbackForm = ({ abExperimentId, abPlacement, abVariant }: Feedbac
             name="comment"
             rows={4}
             className="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-white placeholder:text-white/40 focus:border-neo-electric focus:outline-none"
-            placeholder="Например: подключить отдел закупок и ИТ; пилот на 2 недели"
+            placeholder="Например: автоматизировать подбор КТРУ; подключить отдел закупок и ИТ"
           />
         </label>
       </div>
@@ -247,9 +282,7 @@ export const FeedbackForm = ({ abExperimentId, abPlacement, abVariant }: Feedbac
         disabled={state === "submitting"}
         className="group relative mt-6 inline-flex items-center justify-center gap-2 overflow-hidden rounded-full bg-gradient-cta px-10 py-4 text-base font-bold text-neo-night shadow-[0_0_30px_rgba(255,95,141,0.5)] transition-all hover:-translate-y-1 hover:shadow-[0_0_40px_rgba(255,95,141,0.7)] hover:scale-105 disabled:cursor-progress disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:scale-100"
       >
-        <span className="relative z-10">
-          {state === "submitting" ? "Отправляем…" : "🚀 Получить разбор и доступ"}
-        </span>
+        <span className="relative z-10">{state === "submitting" ? "Отправляем…" : "🚀 Связаться со мной"}</span>
         {state !== "submitting" && (
           <div className="absolute inset-0 animate-pulse bg-gradient-to-r from-transparent via-white/20 to-transparent" />
         )}

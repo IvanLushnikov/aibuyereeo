@@ -69,7 +69,7 @@ export default function Home() {
         <div className="absolute left-1/2 top-1/2 h-64 w-64 -translate-x-1/2 -translate-y-1/2 rounded-full bg-neo-sunrise/10 blur-3xl" />
       </div>
 
-      <section className="relative grid gap-8 lg:grid-cols-[1.2fr_1fr] lg:items-center lg:gap-12">
+      <section className="relative grid gap-8 lg:grid-cols-[1.2fr_1fr] lg:items-start lg:gap-12">
         <div className="space-y-6">
           <div className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-gradient-to-r from-white/10 to-white/5 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-white/90 backdrop-blur-sm">
             <span className="h-1.5 w-1.5 rounded-full bg-neo-electric animate-pulse" />
@@ -103,26 +103,22 @@ export default function Home() {
             </button>
           </div>
         </div>
-        {/* Правая колонка больше не нужна */}
+        {/* Правая колонка — встроенный чат */}
+        <div className="relative overflow-hidden rounded-2xl border border-white/20 bg-gradient-to-br from-white/10 via-white/5 to-transparent p-3 sm:p-4 lg:p-5 shadow-[0_20px_60px_rgba(0,231,255,0.12)] backdrop-blur-xl">
+          <ChatWidget mode="inline" defaultOpen hideFloatingButton />
+        </div>
       </section>
 
-      {/* Встроенный чат */}
-      <section className="space-y-6">
-        <header className="space-y-2">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-neo-electric">Чат</p>
-          <h2 className="font-display text-2xl font-bold leading-tight sm:text-3xl lg:text-4xl">Попробуйте прямо сейчас</h2>
-        </header>
-        <ChatWidget mode="inline" defaultOpen hideFloatingButton />
-      </section>
+      {/* Секция чата отдельно больше не нужна */}
 
       <section id="feedback" className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
         <div className="space-y-4">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-neo-electric">Связаться</p>
           <h2 className="font-display text-3xl font-bold leading-tight sm:text-4xl lg:text-5xl">
-            Хотите протестировать на ваших задачах?
+            Автоматизируем процессы госзакупок в вашей организации
           </h2>
           <p className="text-lg leading-relaxed text-white/80">
-            Оставьте контакт — пришлём сценарии внедрения и подключим к пилоту
+            Оставьте контакт — свяжемся, обсудим текущий процесс и предложим план внедрения
           </p>
         </div>
         <FeedbackForm />

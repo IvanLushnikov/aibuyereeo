@@ -24,16 +24,8 @@ export const Header = () => {
           </div>
         </Link>
 
-        {/* Навигация */}
-        <nav className="hidden items-center gap-4 md:flex">
-          <Link
-            href="#feedback"
-            onClick={() => logEvent("нажал «Заявка» в шапке (nav)", { target: "#feedback" })}
-            className="text-xs font-medium text-white/70 transition-all hover:text-neo-electric hover:scale-105"
-          >
-            Заявка
-          </Link>
-        </nav>
+        {/* Навигация — убрано, чтобы не дублировать CTA */}
+        <nav className="hidden md:flex" />
 
         {/* Кнопки действий */}
         <div className="flex items-center gap-2">
