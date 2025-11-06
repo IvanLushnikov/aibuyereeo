@@ -456,7 +456,7 @@ export const ChatWidget = () => {
     
     // Лог клика по плавающей кнопке чата — человеко‑читаемое
     logEvent(newIsOpen ? "нажал кнопку чата (открыть)" : "нажал кнопку чата (закрыть)").catch(() => {});
-
+    
     if (!hasOpened) {
       setHasOpened(true);
       trackEvent("chat_open").catch(err => {

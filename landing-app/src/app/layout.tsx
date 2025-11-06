@@ -69,6 +69,25 @@ export default function RootLayout({
       <body
         className={`${inter.variable} ${manrope.variable} bg-neo-night text-white antialiased`}
       >
+        {/* Автовосстановление при ошибке загрузки чанка (например, после деплоя) */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function(){
+                var handled=false;
+                function reload(){ if(handled) return; handled=true; try{ sessionStorage.setItem('last_reload', String(Date.now())); }catch(e){} window.location.reload(); }
+                window.addEventListener('error', function(e){
+                  var msg = (e && e.message) || '';
+                  if (/ChunkLoadError|Loading chunk \d+ failed/i.test(msg)) { reload(); }
+                });
+                window.addEventListener('unhandledrejection', function(e){
+                  var msg = (e && e.reason && e.reason.message) || '';
+                  if (/ChunkLoadError|Loading chunk \d+ failed/i.test(msg)) { reload(); }
+                });
+              })();
+            `,
+          }}
+        />
         {children}
       </body>
     </html>

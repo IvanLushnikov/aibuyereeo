@@ -117,27 +117,27 @@ export default function Home() {
               </div>
             ) : (
               <>
-                <h2 className="font-display text-2xl font-bold text-white">Что умеет ИИ‑бот</h2>
-                <ul className="space-y-4 text-sm leading-relaxed text-white/85">
-                  <li className="flex items-start gap-3">
-                    <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-red-500/20 to-orange-500/20 text-lg backdrop-blur-sm shadow-[0_0_15px_rgba(239,68,68,0.2)]">
-                      🎯
-                    </span>
-                    <span>Находит релевантные коды КТРУ под ваш запрос и предлагает альтернативы</span>
-                  </li>
-                  <li className="flex items-start gap-3">
-                    <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500/20 to-cyan-500/20 text-lg backdrop-blur-sm shadow-[0_0_15px_rgba(59,130,246,0.2)]">
-                      🧾
-                    </span>
-                    <span>Уточняет характеристики и выделяет обязательные параметры</span>
-                  </li>
-                  <li className="flex items-start gap-3">
-                    <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-green-500/20 to-emerald-500/20 text-lg backdrop-blur-sm shadow-[0_0_15px_rgba(34,197,94,0.2)]">
-                      🛰️
-                    </span>
-                    <span>Подсвечивает неоднозначности запроса и помогает выбрать корректный код КТРУ</span>
-                  </li>
-                </ul>
+            <h2 className="font-display text-2xl font-bold text-white">Что умеет ИИ‑бот</h2>
+            <ul className="space-y-4 text-sm leading-relaxed text-white/85">
+              <li className="flex items-start gap-3">
+                <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-red-500/20 to-orange-500/20 text-lg backdrop-blur-sm shadow-[0_0_15px_rgba(239,68,68,0.2)]">
+                  🎯
+                </span>
+                <span>Находит релевантные коды КТРУ под ваш запрос и предлагает альтернативы</span>
+              </li>
+              <li className="flex items-start gap-3">
+                <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500/20 to-cyan-500/20 text-lg backdrop-blur-sm shadow-[0_0_15px_rgba(59,130,246,0.2)]">
+                  🧾
+                </span>
+                <span>Уточняет характеристики и выделяет обязательные параметры</span>
+              </li>
+              <li className="flex items-start gap-3">
+                <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-green-500/20 to-emerald-500/20 text-lg backdrop-blur-sm shadow-[0_0_15px_rgba(34,197,94,0.2)]">
+                  🛰️
+                </span>
+                <span>Подсвечивает неоднозначности запроса и помогает выбрать корректный код КТРУ</span>
+              </li>
+            </ul>
               </>
             )}
           </div>
