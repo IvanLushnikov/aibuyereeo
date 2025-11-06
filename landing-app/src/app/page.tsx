@@ -164,12 +164,6 @@ export default function Home() {
           <div className="space-y-4">
             <h3 className="font-display text-lg font-bold text-white">Полезные ссылки</h3>
             <div className="space-y-2 text-sm text-white/70">
-              <Link href="#how" onClick={() => logEvent("нажал «Как это работает» в футере", { target: "#how" })} className="block transition-colors hover:text-neo-electric">
-                Как это работает
-              </Link>
-              <Link href="#audience" onClick={() => logEvent("нажал «Для кого» в футере", { target: "#audience" })} className="block transition-colors hover:text-neo-electric">
-                Для кого
-              </Link>
               <Link href="#feedback" onClick={() => logEvent("нажал «Оставить заявку» в футере", { target: "#feedback" })} className="block transition-colors hover:text-neo-electric">
                 Оставить заявку
               </Link>
@@ -182,9 +176,7 @@ export default function Home() {
         
       </footer>
 
-      <div id="chat">
-        <ChatWidget />
-      </div>
+      {/* Убрали плавающий чат; используем только встроенный выше */}
     </main>
     </>
   );
