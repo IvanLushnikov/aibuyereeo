@@ -316,9 +316,18 @@ const renderFormattedMessage = (content: string) => {
 
 // Глобальный способ открытия чата извне компонента
 let openChatCallback: (() => void) | null = null;
+let startChatCallback: ((message: string) => void) | null = null;
 
 export const openChat = () => {
   if (openChatCallback) {
+    openChatCallback();
+  }
+};
+
+export const startChatWith = (message: string) => {
+  if (startChatCallback) {
+    startChatCallback(message);
+  } else if (openChatCallback) {
     openChatCallback();
   }
 };
@@ -335,6 +344,7 @@ export const ChatWidget = () => {
   const abortControllerRef = React.useRef<AbortController | null>(null);
   const initializationRef = useRef(false); // Для предотвращения race condition
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
 
   const sessionId = useMemo(() => uuid(), []);
   const thinkingPhrases = useMemo<string[]>(
@@ -622,6 +632,45 @@ export const ChatWidget = () => {
     };
   }, [isOpen, handleToggle]);
 
+  // Регистрируем callback для старта чата с предзаполненным сообщением
+  useEffect(() => {
+    startChatCallback = (message: string) => {
+      const value = (message ?? "").toString().trim();
+      if (!value) {
+        // Пустые строки игнорируем
+        if (!isOpen) handleToggle(true);
+        return;
+      }
+      // Открываем чат (если закрыт), устанавливаем ввод и инициируем submit
+      const openAndSubmit = () => {
+        setInput(value);
+        // Даём React применить setInput перед submit
+        requestAnimationFrame(() => {
+          if (!isThinking && formRef.current) {
+            try {
+              formRef.current.requestSubmit();
+            } catch {
+              // Безопасный fallback: создаём событие submit
+              const evt = new Event("submit", { bubbles: true, cancelable: true });
+              formRef.current.dispatchEvent(evt);
+            }
+          }
+        });
+      };
+
+      if (!isOpen) {
+        handleToggle(true);
+        // Ждём анимацию открытия, затем сабмитим
+        setTimeout(openAndSubmit, 320);
+      } else {
+        openAndSubmit();
+      }
+    };
+    return () => {
+      startChatCallback = null;
+    };
+  }, [isOpen, isThinking, handleToggle]);
+
   // Автоскролл при добавлении новых сообщений или изменении статуса thinking
   useEffect(() => {
     if (isOpen && messagesContainerRef.current) {
@@ -739,7 +788,7 @@ export const ChatWidget = () => {
           </div>
 
           {/* Input form */}
-          <form onSubmit={handleSubmit} className="border-t border-white/10 bg-neo-card/80 p-6">
+          <form ref={formRef} onSubmit={handleSubmit} className="border-t border-white/10 bg-neo-card/80 p-6">
             <input type="hidden" name="sessionId" value={sessionId} />
             <div className="flex items-center gap-3">
               <input

@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { ChatWidget, openChat } from "@/components/chat-widget";
+import { ChatWidget, openChat, startChatWith } from "@/components/chat-widget";
 import { FeedbackForm } from "@/components/feedback-form";
 import { Header } from "@/components/header";
 import { logEvent } from "@/lib/analytics";
 import { useExperiment } from "@/lib/ab-client";
 import { AbDebugBadge } from "@/components/ab-debug-badge";
+import { useState } from "react";
 
 const audience = [
   {
@@ -58,6 +59,62 @@ const faq = [
   { question: "Кто принимает финальное решение?", answer: "Рекомендации носят справочный характер; окончательное решение принимает ответственное лицо." },
   { question: "Можно ли выгрузить обоснование?", answer: "Да, доступен экспорт с перечнем кодов КТРУ и ссылками на карточки." },
 ];
+
+function HypothesisStarter() {
+  const [value, setValue] = useState("");
+  const examples = [
+    "Мониторы 24″ для школы, 10 шт.",
+    "Услуги по уборке офисных помещений",
+    "Грузовой автомобиль грузоподъёмностью 3 т",
+  ];
+
+  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const text = value.trim();
+    if (!text) return;
+    logEvent("hypothesis_input_submit", { length: text.length, placement: "hero_right" });
+    startChatWith(text);
+  };
+
+  return (
+    <div className="space-y-4">
+      <form onSubmit={handleSubmit} className="flex items-center gap-3">
+        <input
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onFocus={() => logEvent("hypothesis_input_focus", { placement: "hero_right" })}
+          placeholder="Опишите, что нужно купить…"
+          className="flex-1 rounded-xl border border-white/20 bg-white/10 px-5 py-4 text-base text-white placeholder:text-white/40 focus:border-neo-electric focus:outline-none focus:ring-2 focus:ring-neo-electric/30"
+          maxLength={2000}
+          aria-label="Описание закупки"
+        />
+        <button
+          type="submit"
+          className="rounded-xl bg-gradient-cta px-6 py-4 text-base font-semibold text-neo-night transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+          disabled={!value.trim()}
+        >
+          Проверить
+        </button>
+      </form>
+      <div className="flex flex-wrap gap-2">
+        {examples.map((ex) => (
+          <button
+            key={ex}
+            type="button"
+            onClick={() => {
+              setValue(ex);
+              logEvent("hypothesis_example_click", { example: ex });
+              startChatWith(ex);
+            }}
+            className="rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-xs text-white/80 transition hover:border-neo-electric/40 hover:text-neo-electric"
+          >
+            {ex}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export default function Home() {
   const { variant: ctaVariant, trackConversion: trackCtaConversion } = useExperiment("cta_text");
@@ -114,32 +171,26 @@ export default function Home() {
           <div className="relative space-y-5">
             {heroRightVariant === "form" ? (
               <div className="space-y-4">
-                <h2 className="font-display text-2xl font-bold text-white">Оставьте заявку на доступ</h2>
-                <FeedbackForm abExperimentId="features_to_form" abPlacement="hero_right" abVariant={heroRightVariant} />
+                <h2 className="font-display text-2xl font-bold text-white">Проверьте гипотезу на своём кейсе</h2>
+                <HypothesisStarter />
               </div>
             ) : (
               <>
-            <h2 className="font-display text-2xl font-bold text-white">Что умеет ИИ‑бот</h2>
-            <ul className="space-y-4 text-sm leading-relaxed text-white/85">
-              <li className="flex items-start gap-3">
-                <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-red-500/20 to-orange-500/20 text-lg backdrop-blur-sm shadow-[0_0_15px_rgba(239,68,68,0.2)]">
-                  🎯
-                </span>
-                <span>Находит релевантные коды КТРУ под ваш запрос и предлагает альтернативы</span>
-              </li>
-              <li className="flex items-start gap-3">
-                <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500/20 to-cyan-500/20 text-lg backdrop-blur-sm shadow-[0_0_15px_rgba(59,130,246,0.2)]">
-                  🧾
-                </span>
-                <span>Уточняет характеристики и выделяет обязательные параметры</span>
-              </li>
-              <li className="flex items-start gap-3">
-                <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-green-500/20 to-emerald-500/20 text-lg backdrop-blur-sm shadow-[0_0_15px_rgba(34,197,94,0.2)]">
-                  🛰️
-                </span>
-                <span>Подсвечивает неоднозначности запроса и помогает выбрать корректный код КТРУ</span>
-              </li>
-            </ul>
+                <h2 className="font-display text-2xl font-bold text-white">Что умеет ИИ‑бот</h2>
+                <ul className="space-y-4 text-sm leading-relaxed text-white/85">
+                  <li className="flex items-start gap-3">
+                    <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-red-500/20 to-orange-500/20 text-lg backdrop-blur-sm shadow-[0_0_15px_rgba(239,68,68,0.2)]">🎯</span>
+                    <span>Находит релевантные коды КТРУ под ваш запрос и предлагает альтернативы</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500/20 to-cyan-500/20 text-lg backdrop-blur-sm shadow-[0_0_15px_rgba(59,130,246,0.2)]">🧾</span>
+                    <span>Уточняет характеристики и выделяет обязательные параметры</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-green-500/20 to-emerald-500/20 text-lg backdrop-blur-sm shadow-[0_0_15px_rgba(34,197,94,0.2)]">🛰️</span>
+                    <span>Подсвечивает неоднозначности запроса и помогает выбрать корректный код КТРУ</span>
+                  </li>
+                </ul>
               </>
             )}
           </div>
