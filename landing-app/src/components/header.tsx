@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { openChat } from "./chat-widget";
+import { trackEvent } from "@/lib/analytics";
 
 export const Header = () => {
   return (
@@ -17,7 +18,7 @@ export const Header = () => {
           </div>
           <div className="hidden sm:block">
             <p className="font-display text-base font-bold text-white leading-tight">ИИ‑бот для госзакупок</p>
-            <p className="text-xs text-white/60 leading-tight">Подбор КТРУ за секунды</p>
+            <p className="text-xs text-white/60 leading-tight">Подбор КТРУ за минуты</p>
           </div>
           <div className="sm:hidden">
             <p className="font-display text-sm font-bold text-white">ИИ‑бот</p>
@@ -28,18 +29,21 @@ export const Header = () => {
         <nav className="hidden items-center gap-4 md:flex">
           <Link
             href="#how"
+            onClick={() => trackEvent("navigation_click", { location: "header", link: "Как это работает", target: "#how" })}
             className="text-xs font-medium text-white/70 transition-all hover:text-neo-electric hover:scale-105"
           >
             Как это работает
           </Link>
           <Link
             href="#audience"
+            onClick={() => trackEvent("navigation_click", { location: "header", link: "Для кого", target: "#audience" })}
             className="text-xs font-medium text-white/70 transition-all hover:text-neo-electric hover:scale-105"
           >
             Для кого
           </Link>
           <Link
             href="#feedback"
+            onClick={() => trackEvent("navigation_click", { location: "header", link: "Контакты", target: "#feedback" })}
             className="text-xs font-medium text-white/70 transition-all hover:text-neo-electric hover:scale-105"
           >
             Контакты
@@ -51,6 +55,7 @@ export const Header = () => {
           <button
             type="button"
             onClick={() => {
+              trackEvent("button_click", { location: "header", button: "Заявка" });
               const feedbackSection = document.getElementById("feedback");
               feedbackSection?.scrollIntoView({ behavior: "smooth" });
             }}
@@ -60,10 +65,13 @@ export const Header = () => {
           </button>
           <button
             type="button"
-            onClick={openChat}
+            onClick={() => {
+              trackEvent("cta_click", { location: "header", button: "Подобрать код" });
+              openChat();
+            }}
             className="group relative inline-flex items-center justify-center gap-1.5 overflow-hidden rounded-lg bg-gradient-cta px-4 py-2 text-xs font-bold text-neo-night shadow-[0_0_15px_rgba(255,95,141,0.4)] transition-all hover:scale-105 hover:shadow-[0_0_25px_rgba(255,95,141,0.6)] md:px-5 md:py-2.5 md:text-sm"
           >
-            <span className="relative z-10">🎯 КТРУ</span>
+            <span className="relative z-10">🎯 Подобрать код</span>
             <div className="absolute inset-0 animate-pulse bg-gradient-to-r from-transparent via-white/20 to-transparent" />
           </button>
         </div>

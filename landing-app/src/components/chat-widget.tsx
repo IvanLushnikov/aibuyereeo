@@ -14,14 +14,14 @@ type Message = {
 const fallbackReply =
   "ИИ‑бот сейчас перегружен. Попробуйте отправить запрос ещё раз через минуту.";
 
-const welcomeMessage = `Привет! Я помогу найти код КТРУ по описанию товара или услуги.
+const welcomeMessage = `Привет! Помогу подобрать коды КТРУ по описанию товара или услуги.
 
-Просто опишите, что вам нужно купить, простыми словами. Например:
+Опишите предмет закупки простыми словами. Например:
 • "Нужны мониторы 24 дюйма для школы, 10 штук"
 • "Требуется грузовой автомобиль грузоподъемностью 3 тонны"
 • "Нужны услуги по уборке офисных помещений"
 
-Я задам уточняющие вопросы, если нужно, и подберу подходящие коды КТРУ с характеристиками.`;
+Уточню недостающие параметры, предложу коды КТРУ с обязательными характеристиками и проверю корректность набора параметров.`;
 
 // Валидация и санитизация URL для защиты от XSS
 const isValidUrl = (url: string): boolean => {
@@ -104,63 +104,123 @@ const renderFormattedMessage = (content: string) => {
     remaining = content;
   }
 
-  // Если были markdown ссылки, обрабатываем оставшийся текст отдельно
-  if (lastIndex > 0 && remaining) {
-    parts.push(remaining);
-  } else if (lastIndex === 0) {
-    // Если не было markdown ссылок, обрабатываем обычные URL
-    const urlRegex = /(https?:\/\/[^\s]+|www\.[^\s]+)/gi;
-    const urlMatches: Array<{ index: number; url: string; length: number }> = [];
+  // Функция для обработки URL и кодов КТРУ
+  function processUrlsAndKtruCodes(text: string, partsArray: (string | React.ReactElement)[], keyCount: number): { remaining: string; newKeyCount: number } {
+    // Сначала обрабатываем полные URL (включая zakupki44fz.ru)
+    const urlRegex = /(https?:\/\/[^\s\)]+|www\.[^\s\)]+)/gi;
+    const allMatches: Array<{ index: number; type: 'url' | 'ktru'; text: string; length: number; url?: string }> = [];
     
-    // Собираем все совпадения
+    // Собираем все URL
     let urlMatch;
-    while ((urlMatch = urlRegex.exec(remaining)) !== null) {
-      urlMatches.push({
+    while ((urlMatch = urlRegex.exec(text)) !== null) {
+      allMatches.push({
         index: urlMatch.index,
-        url: urlMatch[0],
+        type: 'url',
+        text: urlMatch[0],
         length: urlMatch[0].length,
+        url: urlMatch[0],
       });
     }
 
-    let urlLastIndex = 0;
+    // Затем обрабатываем коды КТРУ без URL (формат: XX.XX.XX.XXX-XXXXXXXXX)
+    // Ищем паттерн: цифры, точки, дефис, цифры (но не в уже найденных URL)
+    // Паттерн: 2 цифры.2 цифры.2 цифры.3 цифры-8-9 цифр
+    const ktruRegex = /\b(\d{2}\.\d{2}\.\d{2}\.\d{3}-\d{8,9})\b/g;
+    let ktruMatch;
+    while ((ktruMatch = ktruRegex.exec(text)) !== null) {
+      // Проверяем, не является ли это частью уже найденного URL
+      const isPartOfUrl = allMatches.some(m => 
+        m.type === 'url' && 
+        ktruMatch.index >= m.index && 
+        ktruMatch.index < m.index + m.length
+      );
+      
+      if (!isPartOfUrl) {
+        allMatches.push({
+          index: ktruMatch.index,
+          type: 'ktru',
+          text: ktruMatch[1],
+          length: ktruMatch[0].length,
+          url: `https://zakupki44fz.ru/app/okpd2/${ktruMatch[1]}`,
+        });
+      }
+    }
 
-    for (const urlMatch of urlMatches) {
-      // Добавляем текст до URL
-      if (urlMatch.index > urlLastIndex) {
-        const beforeUrl = remaining.slice(urlLastIndex, urlMatch.index);
-        if (beforeUrl) {
-          parts.push(beforeUrl);
+    // Сортируем все совпадения по индексу
+    allMatches.sort((a, b) => a.index - b.index);
+
+    let lastIndex = 0;
+    let currentKeyCount = keyCount;
+
+    for (const match of allMatches) {
+      // Добавляем текст до совпадения
+      if (match.index > lastIndex) {
+        const beforeText = text.slice(lastIndex, match.index);
+        if (beforeText) {
+          partsArray.push(beforeText);
         }
       }
 
-      // Валидируем и санитизируем URL
-      const sanitizedUrl = sanitizeUrl(urlMatch.url);
-      if (isValidUrl(sanitizedUrl)) {
-        parts.push(
+      // Обрабатываем URL или код КТРУ
+      if (match.type === 'url') {
+        // Валидируем и санитизируем URL
+        const sanitizedUrl = sanitizeUrl(match.text);
+        if (isValidUrl(sanitizedUrl)) {
+          partsArray.push(
+            <a
+              key={`url-${currentKeyCount++}`}
+              href={sanitizedUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-neo-electric underline hover:text-neo-glow transition-colors"
+            >
+              {match.text}
+            </a>
+          );
+        } else {
+          partsArray.push(match.text);
+        }
+      } else if (match.type === 'ktru' && match.url) {
+        // Создаем ссылку для кода КТРУ
+        partsArray.push(
           <a
-            key={`url-${keyCounter++}`}
-            href={sanitizedUrl}
+            key={`ktru-${currentKeyCount++}`}
+            href={match.url}
             target="_blank"
             rel="noopener noreferrer"
             className="text-neo-electric underline hover:text-neo-glow transition-colors"
           >
-            {urlMatch.url}
+            {match.text}
           </a>
         );
       } else {
-        // Если URL невалидный, показываем как обычный текст
-        parts.push(urlMatch.url);
+        partsArray.push(match.text);
       }
 
-      urlLastIndex = urlMatch.index + urlMatch.length;
+      lastIndex = match.index + match.length;
     }
 
-    // Добавляем оставшийся текст после URL
-    if (urlLastIndex < remaining.length) {
-      parts.push(remaining.slice(urlLastIndex));
-    } else if (urlLastIndex === 0) {
-      parts.push(remaining);
-    }
+    // Возвращаем оставшийся текст после всех совпадений и обновленный keyCounter
+    const remainingText = lastIndex < text.length ? text.slice(lastIndex) : '';
+    return { remaining: remainingText, newKeyCount: currentKeyCount };
+  }
+
+  // Если были markdown ссылки, обрабатываем оставшийся текст отдельно
+  if (lastIndex > 0 && remaining) {
+    // Обрабатываем URL и коды КТРУ в оставшемся тексте
+    const result = processUrlsAndKtruCodes(remaining, parts, keyCounter);
+    remaining = result.remaining;
+    keyCounter = result.newKeyCount;
+  } else if (lastIndex === 0) {
+    // Если не было markdown ссылок, обрабатываем URL и коды КТРУ
+    const result = processUrlsAndKtruCodes(remaining, parts, keyCounter);
+    remaining = result.remaining;
+    keyCounter = result.newKeyCount;
+  }
+
+  // Добавляем оставшийся текст в parts, если он есть
+  if (remaining) {
+    parts.push(remaining);
   }
 
   // Обрабатываем форматирование в текстовых частях
@@ -579,11 +639,11 @@ export const ChatWidget = () => {
       <button
         type="button"
         onClick={() => handleToggle()}
-        aria-label={isOpen ? "Закрыть чат" : "Подобрать код КТРУ"}
+        aria-label={isOpen ? "Закрыть чат" : "Подобрать код"}
         aria-expanded={isOpen}
         className="group fixed bottom-6 right-6 z-40 flex items-center justify-center gap-2 overflow-hidden rounded-full bg-gradient-cta px-6 py-3 text-base font-bold text-neo-night shadow-[0_0_30px_rgba(255,95,141,0.6)] transition-all duration-300 hover:scale-105 hover:shadow-[0_0_40px_rgba(255,95,141,0.8)] focus:outline-none focus:ring-4 focus:ring-neo-electric/40 md:px-8 md:py-4 md:text-lg"
       >
-        <span className="relative z-10">🎯 Подобрать код КТРУ</span>
+        <span className="relative z-10">🎯 Подобрать код</span>
         <div className="absolute inset-0 animate-pulse bg-gradient-to-r from-transparent via-white/20 to-transparent" />
       </button>
 

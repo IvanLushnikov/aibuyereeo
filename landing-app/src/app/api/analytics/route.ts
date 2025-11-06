@@ -6,10 +6,14 @@ const ALLOWED_EVENTS = new Set([
   "page_view",
   "cta_click",
   "chat_open",
+  "chat_close",
   "chat_message_sent",
   "chat_message_received",
   "chat_error",
   "feedback_submitted",
+  "button_click",
+  "link_click",
+  "navigation_click",
 ]);
 
 // Rate limiting для analytics: максимум 100 событий в минуту на clientId
@@ -92,14 +96,19 @@ export async function POST(request: Request) {
       }
     }
 
-    await appendEventLog({
+    // Записываем событие в лог (не блокируем ответ при ошибке)
+    appendEventLog({
       timestamp: new Date().toISOString(),
       clientId,
       sessionId,
       event,
       payload,
+    }).catch((error) => {
+      // Ошибка логирования не должна влиять на ответ API
+      console.warn("[Analytics] Ошибка записи в лог (не критично):", error instanceof Error ? error.message : String(error));
     });
 
+    // Возвращаем успешный ответ независимо от результата логирования
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error("[Analytics] endpoint error:", error);

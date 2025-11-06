@@ -65,24 +65,43 @@ export const FeedbackForm = () => {
       lastSubmitTime = now;
       const clientId = ensureClientId();
       
-      const response = await fetch("/api/analytics", {
+      const response = await fetch("/api/feedback", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          event: "feedback_submitted",
+          name: payload.name,
+          email,
+          role: payload.role,
+          comment: payload.comment,
           clientId,
           sessionId,
-          payload,
         }),
       });
 
+      // Читаем ответ один раз
+      const responseData = await response.json().catch(() => ({}));
+
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
+        console.error("[FeedbackForm] API error:", response.status, responseData);
+        
         if (response.status === 429) {
           setError("Слишком много запросов. Подождите минуту и попробуйте снова.");
+        } else if (response.status === 400) {
+          setError(responseData.error || "Неверные данные. Проверьте форму и попробуйте ещё раз.");
+        } else if (response.status === 502) {
+          setError("Не удалось связаться с сервером обработки. Попробуйте ещё раз позднее.");
+        } else if (response.status === 504) {
+          setError("Сервер долго не отвечает. Попробуйте ещё раз." );
         } else {
-          setError("Не удалось отправить форму. Попробуйте ещё раз.");
+          setError(`Ошибка сервера (${response.status}). Попробуйте ещё раз через минуту.`);
         }
+        setState("idle");
+        return;
+      }
+
+      // Проверяем, что ответ действительно успешный
+      if (responseData.ok !== true) {
+        setError("Неожиданный ответ от сервера. Попробуйте ещё раз.");
         setState("idle");
         return;
       }
@@ -90,8 +109,14 @@ export const FeedbackForm = () => {
       setState("success");
       event.currentTarget.reset();
     } catch (cause) {
-      console.error(cause);
-      setError("Не удалось отправить форму. Проверьте подключение к интернету и попробуйте ещё раз.");
+      console.error("[FeedbackForm] Submit error:", cause);
+      const errorMessage = cause instanceof Error ? cause.message : String(cause);
+      
+      if (errorMessage.includes('Failed to fetch') || errorMessage.includes('NetworkError')) {
+        setError("Нет подключения к интернету. Проверьте соединение и попробуйте ещё раз.");
+      } else {
+        setError(`Ошибка отправки: ${errorMessage}. Попробуйте ещё раз.`);
+      }
       setState("idle");
     }
   };
@@ -102,7 +127,7 @@ export const FeedbackForm = () => {
         <div className="text-4xl">🤖</div>
         <h3 className="mt-4 font-display text-2xl">Спасибо!</h3>
         <p className="mt-2 text-sm text-white/70">
-          Контакт сохранён. Вышлем чек‑лист внедрения и свяжемся в ближайшее время.
+          Мы свяжемся и пришлём чек‑лист для быстрого старта.
         </p>
         <button
           type="button"
@@ -120,9 +145,9 @@ export const FeedbackForm = () => {
       onSubmit={handleSubmit}
       className="rounded-3xl border border-white/10 bg-white/5 p-10 shadow-neon-soft backdrop-blur-xl"
     >
-      <h3 className="font-display text-2xl">Внедрение ИИ‑бота в вашу компанию</h3>
+      <h3 className="font-display text-2xl">Хотите протестировать на ваших задачах?</h3>
       <p className="mt-2 text-sm text-white/70">
-        Оставьте заявку — подготовим личный план внедрения
+        Оставьте контакт — пришлём сценарии внедрения и подключим к пилоту
       </p>
       {/* Honeypot поле (скрыто от пользователей, но видимо ботам) */}
       <input
@@ -205,7 +230,7 @@ export const FeedbackForm = () => {
         className="group relative mt-6 inline-flex items-center justify-center gap-2 overflow-hidden rounded-full bg-gradient-cta px-10 py-4 text-base font-bold text-neo-night shadow-[0_0_30px_rgba(255,95,141,0.5)] transition-all hover:-translate-y-1 hover:shadow-[0_0_40px_rgba(255,95,141,0.7)] hover:scale-105 disabled:cursor-progress disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:scale-100"
       >
         <span className="relative z-10">
-          {state === "submitting" ? "Отправляем…" : "🚀 Получить личный разбор"}
+          {state === "submitting" ? "Отправляем…" : "🚀 Получить разбор и доступ"}
         </span>
         {state !== "submitting" && (
           <div className="absolute inset-0 animate-pulse bg-gradient-to-r from-transparent via-white/20 to-transparent" />

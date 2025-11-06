@@ -57,6 +57,7 @@ cp .env.example .env.local
 - `LOGS_ROOT` — путь к директории для логов (по умолчанию: `./logs`)
 - `RATE_LIMIT_WINDOW_SEC` — окно для rate limiting в секундах (по умолчанию: 3600)
 - `RATE_LIMIT_MAX_REQUESTS` — максимальное количество запросов в окне (по умолчанию: 20)
+- `FEEDBACK_WEBHOOK_URL` — prod-вебхук n8n для заявок с формы обратной связи
 
 ## Структура проекта
 

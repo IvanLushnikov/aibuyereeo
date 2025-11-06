@@ -5,8 +5,9 @@
   "scripts": {
     "dev": "next dev --webpack",
     "build": "next build --webpack",
-    "start": "next start",
-    "lint": "eslint"
+    "start": "node scripts/init-logs.js && next start",
+    "lint": "eslint",
+    "init-logs": "node scripts/init-logs.js"
   },
   "dependencies": {
     "next": "16.0.1",
