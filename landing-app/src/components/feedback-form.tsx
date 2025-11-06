@@ -3,7 +3,7 @@
 import { useMemo, useRef, useState } from "react";
 import { v4 as uuid } from "uuid";
 import { ensureClientId } from "@/lib/client-id";
-import { logEvent } from "@/lib/analytics";
+import { logEvent, trackEvent } from "@/lib/analytics";
 
 const roles = [
   "Инициатор",
@@ -68,9 +68,9 @@ export const FeedbackForm = ({ abExperimentId, abPlacement }: FeedbackFormProps)
     }
 
     try {
-      // A/B конверсия: фиксируем для конкретного эксперимента, если он передан
+      // A/B конверсия: фиксируем стандартным событием, чтобы было видно в статистике
       if (abExperimentId) {
-        logEvent("AB конверсия: отправка формы", { experimentId: abExperimentId, placement: abPlacement ?? "unknown" }).catch(() => {});
+        trackEvent("ab_conversion", { experimentId: abExperimentId, placement: abPlacement ?? "hero_right" }).catch(() => {});
       }
       // Лог клика по кнопке отправки формы
       logEvent("нажал «Отправить форму» в блоке заявки").catch(() => {});
