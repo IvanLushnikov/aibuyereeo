@@ -407,6 +407,23 @@ export const ChatWidget = ({ mode = "drawer", defaultOpen = false, hideFloatingB
     };
   }, [isThinking, thinkingPhrases]);
 
+  // В inline-режиме показываем приветственное сообщение сразу на странице
+  useEffect(() => {
+    if (mode !== "inline") return;
+    if (hasInitialized) return;
+    if (messages.length === 0) {
+      setHasInitialized(true);
+      setMessages([
+        {
+          id: uuid(),
+          role: "agent",
+          content: welcomeMessage,
+          timestamp: Date.now(),
+        },
+      ]);
+    }
+  }, [mode, hasInitialized, messages.length]);
+
   const getClientId = (): string => {
     // Если clientId уже установлен, используем его
     if (clientId && clientId.trim()) {
@@ -734,7 +751,7 @@ export const ChatWidget = ({ mode = "drawer", defaultOpen = false, hideFloatingB
             : "flex w-full flex-col overflow-hidden rounded-2xl border border-white/10 bg-neo-card/90 backdrop-blur-xl shadow-2xl"
         }>
           {/* Header */}
-          <header className="flex items-center justify-between gap-3 border-b border-white/10 px-6 py-5">
+          <header className={`flex items-center justify-between gap-3 px-6 py-5 ${mode === "drawer" ? "border-b border-white/10" : "border-b border-white/5"}`}>
             <div className="flex items-center gap-3">
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-neo-glow/20 text-2xl">
                 🤖
@@ -746,14 +763,16 @@ export const ChatWidget = ({ mode = "drawer", defaultOpen = false, hideFloatingB
                 </p>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={() => handleToggle()}
-              aria-label="Закрыть чат"
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-white/5 text-xl text-white/70 transition hover:bg-white/10 hover:text-white"
-            >
-              ✕
-            </button>
+            {mode === "drawer" && (
+              <button
+                type="button"
+                onClick={() => handleToggle()}
+                aria-label="Закрыть чат"
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-white/5 text-xl text-white/70 transition hover:bg-white/10 hover:text-white"
+              >
+                ✕
+              </button>
+            )}
           </header>
 
           {/* Messages area */}

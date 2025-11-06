@@ -83,7 +83,7 @@ export default function Home() {
           </p>
           <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {pains.map((text) => (
-              <li key={text} className="flex items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-sm text-white/85">
+              <li key={text} className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-white/80">
                 <span className="text-neo-electric">✶</span>
                 <span>{text}</span>
               </li>
@@ -110,7 +110,7 @@ export default function Home() {
       <section className="space-y-6">
         <header className="space-y-2">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-neo-electric">Чат</p>
-          <h2 className="font-display text-3xl font-bold leading-tight sm:text-4xl lg:text-5xl">Проверьте свой запрос сразу</h2>
+          <h2 className="font-display text-2xl font-bold leading-tight sm:text-3xl lg:text-4xl">Попробуйте прямо сейчас</h2>
         </header>
         <ChatWidget mode="inline" defaultOpen hideFloatingButton />
       </section>
