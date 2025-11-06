@@ -50,7 +50,8 @@ export const FeedbackForm = () => {
       return;
     }
 
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     const payload = Object.fromEntries(form.entries());
     const email = String(payload.email || "").trim();
 
@@ -107,7 +108,7 @@ export const FeedbackForm = () => {
       }
 
       setState("success");
-      event.currentTarget.reset();
+      formElement.reset();
     } catch (cause) {
       console.error("[FeedbackForm] Submit error:", cause);
       const errorMessage = cause instanceof Error ? cause.message : String(cause);
