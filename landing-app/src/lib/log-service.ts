@@ -143,10 +143,18 @@ export async function appendEventLog(args: {
       args.payload ? JSON.stringify(args.payload) : "",
     ]);
     await appendFile(filePath, line, { encoding: "utf-8" });
+    const abSummary = (() => {
+      const payload = args.payload as Record<string, unknown> | undefined;
+      const exp = typeof payload?.["experimentId"] === "string" ? String(payload?.["experimentId"]) : undefined;
+      const variant = typeof payload?.["variant"] === "string" ? String(payload?.["variant"]) : undefined;
+      return exp || variant ? `${exp ?? "?"}:${variant ?? "?"}` : undefined;
+    })();
     console.log(`[LOG] Записано событие в ${filePath}:`, {
       timestamp: args.timestamp,
       clientId: args.clientId,
       event: args.event,
+      ...(abSummary ? { ab: abSummary } : {}),
+      ...(args.payload ? { payload: args.payload } : {}),
     });
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
