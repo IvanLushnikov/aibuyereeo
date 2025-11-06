@@ -27,9 +27,10 @@ const MIN_SUBMIT_INTERVAL = 3000;
 type FeedbackFormProps = {
   abExperimentId?: string;
   abPlacement?: string;
+  abVariant?: string | null;
 };
 
-export const FeedbackForm = ({ abExperimentId, abPlacement }: FeedbackFormProps) => {
+export const FeedbackForm = ({ abExperimentId, abPlacement, abVariant }: FeedbackFormProps) => {
   const [state, setState] = useState<FormState>("idle");
   const [error, setError] = useState<string | null>(null);
   const [emailError, setEmailError] = useState<string | null>(null);
@@ -70,7 +71,7 @@ export const FeedbackForm = ({ abExperimentId, abPlacement }: FeedbackFormProps)
     try {
       // A/B конверсия: фиксируем стандартным событием, чтобы было видно в статистике
       if (abExperimentId) {
-        trackEvent("ab_conversion", { experimentId: abExperimentId, placement: abPlacement ?? "hero_right" }).catch(() => {});
+        trackEvent("ab_conversion", { experimentId: abExperimentId, variant: abVariant ?? "form", placement: abPlacement ?? "hero_right" }).catch(() => {});
       }
       // Лог клика по кнопке отправки формы
       logEvent("нажал «Отправить форму» в блоке заявки").catch(() => {});

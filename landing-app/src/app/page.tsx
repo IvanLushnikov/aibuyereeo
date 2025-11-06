@@ -113,7 +113,7 @@ export default function Home() {
             {heroRightVariant === "form" ? (
               <div className="space-y-4">
                 <h2 className="font-display text-2xl font-bold text-white">Оставьте заявку на доступ</h2>
-                <FeedbackForm abExperimentId="features_to_form" abPlacement="hero_right" />
+                <FeedbackForm abExperimentId="features_to_form" abPlacement="hero_right" abVariant={heroRightVariant} />
               </div>
             ) : (
               <>

@@ -93,8 +93,8 @@ function resolveVariant(experimentId: string, clientId: string): string {
   return assigned;
 }
 
-export function trackAbConversion(experimentId: string, payload?: Record<string, unknown>): void {
-  trackEvent("ab_conversion", { experimentId, ...payload });
+export function trackAbConversion(experimentId: string, variant: string | null, payload?: Record<string, unknown>): void {
+  trackEvent("ab_conversion", { experimentId, variant: variant ?? undefined, ...payload });
 }
 
 /**
@@ -136,7 +136,7 @@ export function useExperiment(
     exposureSentRef.current = true;
   }, [experimentId, variant]);
 
-  const trackConversion = (payload?: Record<string, unknown>) => trackAbConversion(experimentId, payload);
+  const trackConversion = (payload?: Record<string, unknown>) => trackAbConversion(experimentId, variant, payload);
 
   return { variant, trackConversion };
 }
