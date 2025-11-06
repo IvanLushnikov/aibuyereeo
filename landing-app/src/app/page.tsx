@@ -6,6 +6,7 @@ import { FeedbackForm } from "@/components/feedback-form";
 import { Header } from "@/components/header";
 import { logEvent } from "@/lib/analytics";
 import { useExperiment } from "@/lib/ab-client";
+import { AbDebugBadge } from "@/components/ab-debug-badge";
 
 const audience = [
   {
@@ -64,6 +65,7 @@ export default function Home() {
   return (
     <>
       <Header />
+      <AbDebugBadge />
       <main className="relative mx-auto flex min-h-screen max-w-7xl flex-col gap-16 px-4 pb-20 pt-20 sm:px-6 md:px-8 md:pt-22 lg:px-12 lg:gap-20">
       <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
         <div className="animate-float absolute -left-24 top-16 h-96 w-96 rounded-full bg-neo-glow/15 blur-3xl" />
