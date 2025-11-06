@@ -66,12 +66,12 @@ export const Header = () => {
           <button
             type="button"
             onClick={() => {
-              trackEvent("cta_click", { location: "header", button: "Подобрать код" });
+              trackEvent("cta_click", { location: "header", button: "Подобрать код КТРУ" });
               openChat();
             }}
             className="group relative inline-flex items-center justify-center gap-1.5 overflow-hidden rounded-lg bg-gradient-cta px-4 py-2 text-xs font-bold text-neo-night shadow-[0_0_15px_rgba(255,95,141,0.4)] transition-all hover:scale-105 hover:shadow-[0_0_25px_rgba(255,95,141,0.6)] md:px-5 md:py-2.5 md:text-sm"
           >
-            <span className="relative z-10">🎯 Подобрать код</span>
+            <span className="relative z-10">🎯 Подобрать код КТРУ</span>
             <div className="absolute inset-0 animate-pulse bg-gradient-to-r from-transparent via-white/20 to-transparent" />
           </button>
         </div>
