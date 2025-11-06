@@ -6,6 +6,15 @@ import { trackEvent } from "./analytics";
 import { getExperimentDefinition } from "./ab-config";
 import { assignVariantDeterministic } from "./ab-core";
 
+function isAbDebugEnabled(): boolean {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    return params.has("_abdebug") || params.get("debug") === "ab";
+  } catch {
+    return false;
+  }
+}
+
 function getLocalStorageItem(key: string): string | null {
   try {
     return window.localStorage.getItem(key);
@@ -117,6 +126,11 @@ export function useExperiment(
       return;
     }
 
+    if (isAbDebugEnabled()) {
+      // В режиме отладки дублируем в консоль
+      // eslint-disable-next-line no-console
+      console.log("[AB] exposure", { experimentId, variant });
+    }
     trackEvent("ab_exposure", { experimentId, variant });
     setSessionStorageItem(exposureKey, "1");
     exposureSentRef.current = true;
