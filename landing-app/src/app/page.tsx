@@ -81,6 +81,10 @@ export default function Home() {
           <p className="max-w-2xl text-lg leading-relaxed text-white/80">
             Опишите закупку простыми словами — получите 1–3 кода КТРУ с обязательными характеристиками. Прямо в чате, бесплатно и без регистрации.
           </p>
+          <div className="space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-neo-electric">Проблемы</p>
+            <h2 className="font-display text-xl font-bold text-white">Что мы закрываем</h2>
+          </div>
           <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {pains.map((text) => (
               <li key={text} className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-white/80">
