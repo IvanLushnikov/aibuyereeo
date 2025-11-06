@@ -696,18 +696,11 @@ export const ChatWidget = ({ mode = "drawer", defaultOpen = false, hideFloatingB
 
   // Автоскролл при добавлении новых сообщений или изменении статуса thinking
   useEffect(() => {
-    if (isOpen && messagesContainerRef.current) {
-      // Используем requestAnimationFrame для гарантии, что DOM обновился
-      requestAnimationFrame(() => {
-        if (messagesContainerRef.current) {
-          messagesContainerRef.current.scrollTo({
-            top: messagesContainerRef.current.scrollHeight,
-            behavior: 'smooth'
-          });
-        }
-      });
-    }
-  }, [messages, isThinking, isOpen]);
+    const el = messagesContainerRef.current;
+    if (!el) return;
+    // Без анимации — надёжнее в Safari и на мобильных
+    el.scrollTop = el.scrollHeight;
+  }, [messages, isThinking]);
 
   return (
     <>
@@ -764,14 +757,14 @@ export const ChatWidget = ({ mode = "drawer", defaultOpen = false, hideFloatingB
               </div>
             </div>
             {mode === "drawer" && (
-              <button
-                type="button"
-                onClick={() => handleToggle()}
-                aria-label="Закрыть чат"
-                className="flex h-10 w-10 items-center justify-center rounded-full bg-white/5 text-xl text-white/70 transition hover:bg-white/10 hover:text-white"
-              >
-                ✕
-              </button>
+            <button
+              type="button"
+              onClick={() => handleToggle()}
+              aria-label="Закрыть чат"
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-white/5 text-xl text-white/70 transition hover:bg-white/10 hover:text-white"
+            >
+              ✕
+            </button>
             )}
           </header>
 
