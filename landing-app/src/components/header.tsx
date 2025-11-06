@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { openChat } from "./chat-widget";
-import { trackEvent } from "@/lib/analytics";
+import { logEvent } from "@/lib/analytics";
 
 export const Header = () => {
   return (
@@ -29,21 +29,21 @@ export const Header = () => {
         <nav className="hidden items-center gap-4 md:flex">
           <Link
             href="#how"
-            onClick={() => trackEvent("navigation_click", { location: "header", link: "Как это работает", target: "#how" })}
+            onClick={() => logEvent("нажал «Как это работает» в шапке", { target: "#how" })}
             className="text-xs font-medium text-white/70 transition-all hover:text-neo-electric hover:scale-105"
           >
             Как это работает
           </Link>
           <Link
             href="#audience"
-            onClick={() => trackEvent("navigation_click", { location: "header", link: "Для кого", target: "#audience" })}
+            onClick={() => logEvent("нажал «Для кого» в шапке", { target: "#audience" })}
             className="text-xs font-medium text-white/70 transition-all hover:text-neo-electric hover:scale-105"
           >
             Для кого
           </Link>
           <Link
             href="#feedback"
-            onClick={() => trackEvent("navigation_click", { location: "header", link: "Контакты", target: "#feedback" })}
+            onClick={() => logEvent("нажал «Контакты» в шапке", { target: "#feedback" })}
             className="text-xs font-medium text-white/70 transition-all hover:text-neo-electric hover:scale-105"
           >
             Контакты
@@ -55,7 +55,7 @@ export const Header = () => {
           <button
             type="button"
             onClick={() => {
-              trackEvent("button_click", { location: "header", button: "Заявка" });
+              logEvent("нажал «Заявка» в шапке");
               const feedbackSection = document.getElementById("feedback");
               feedbackSection?.scrollIntoView({ behavior: "smooth" });
             }}
@@ -66,7 +66,7 @@ export const Header = () => {
           <button
             type="button"
             onClick={() => {
-              trackEvent("cta_click", { location: "header", button: "Подобрать код КТРУ" });
+              logEvent("нажал «Подобрать код КТРУ» в шапке");
               openChat();
             }}
             className="group relative inline-flex items-center justify-center gap-1.5 overflow-hidden rounded-lg bg-gradient-cta px-4 py-2 text-xs font-bold text-neo-night shadow-[0_0_15px_rgba(255,95,141,0.4)] transition-all hover:scale-105 hover:shadow-[0_0_25px_rgba(255,95,141,0.6)] md:px-5 md:py-2.5 md:text-sm"

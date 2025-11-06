@@ -2,19 +2,7 @@ import { NextResponse } from "next/server";
 import { appendEventLog } from "@/lib/log-service";
 import { RateLimiter } from "@/lib/rate-limit";
 
-const ALLOWED_EVENTS = new Set([
-  "page_view",
-  "cta_click",
-  "chat_open",
-  "chat_close",
-  "chat_message_sent",
-  "chat_message_received",
-  "chat_error",
-  "feedback_submitted",
-  "button_click",
-  "link_click",
-  "navigation_click",
-]);
+// Теперь разрешаем любые человеко‑читаемые названия событий; валидируем только тип и длину
 
 // Rate limiting для analytics: максимум 100 событий в минуту на clientId
 const analyticsRateLimiter = new RateLimiter(
@@ -46,12 +34,11 @@ export async function POST(request: Request) {
       );
     }
 
-    const event = typeof body?.event === "string" ? body.event : undefined;
-
-    if (!event || !ALLOWED_EVENTS.has(event)) {
-      console.error("[Analytics] Invalid event:", event, "Allowed events:", Array.from(ALLOWED_EVENTS));
+    const event = typeof body?.event === "string" ? String(body.event).trim().slice(0, 200) : undefined;
+    if (!event) {
+      console.error("[Analytics] Invalid event value:", body?.event);
       return NextResponse.json(
-        { error: `invalid event. Allowed: ${Array.from(ALLOWED_EVENTS).join(", ")}` },
+        { error: "event is required (non-empty string)" },
         { status: 400 }
       );
     }

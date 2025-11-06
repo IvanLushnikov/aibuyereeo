@@ -3,6 +3,7 @@
 import { useMemo, useRef, useState } from "react";
 import { v4 as uuid } from "uuid";
 import { ensureClientId } from "@/lib/client-id";
+import { logEvent } from "@/lib/analytics";
 
 const roles = [
   "Инициатор",
@@ -62,6 +63,9 @@ export const FeedbackForm = () => {
     }
 
     try {
+      // Лог клика по кнопке отправки формы
+      logEvent("нажал «Отправить форму» в блоке заявки").catch(() => {});
+
       setState("submitting");
       lastSubmitTime = now;
       const clientId = ensureClientId();
@@ -133,7 +137,10 @@ export const FeedbackForm = () => {
         <button
           type="button"
           className="mt-6 text-sm text-white/60 underline decoration-dotted"
-          onClick={() => setState("idle")}
+          onClick={() => {
+            logEvent("нажал «Отправить новый запрос» после формы").catch(() => {});
+            setState("idle");
+          }}
         >
           Отправить новый запрос
         </button>

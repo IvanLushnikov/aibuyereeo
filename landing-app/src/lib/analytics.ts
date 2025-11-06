@@ -33,3 +33,11 @@ export async function trackEvent(event: string, payload?: Record<string, unknown
   }
 }
 
+/**
+ * Удобный хелпер для человеко‑читаемых событий (описание действия как есть)
+ * Пример: logEvent('нажал «Посмотреть, как работает» в первом экране', { location: 'hero' })
+ */
+export async function logEvent(description: string, payload?: Record<string, unknown>): Promise<void> {
+  return trackEvent(description, payload);
+}
+

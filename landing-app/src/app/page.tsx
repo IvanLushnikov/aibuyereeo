@@ -4,7 +4,8 @@ import Link from "next/link";
 import { ChatWidget, openChat } from "@/components/chat-widget";
 import { FeedbackForm } from "@/components/feedback-form";
 import { Header } from "@/components/header";
-import { trackEvent } from "@/lib/analytics";
+import { logEvent } from "@/lib/analytics";
+import { useExperiment } from "@/lib/ab-client";
 
 const audience = [
   {
@@ -58,6 +59,7 @@ const faq = [
 ];
 
 export default function Home() {
+  const { variant: ctaVariant, trackConversion: trackCtaConversion } = useExperiment("cta_text");
   return (
     <>
       <Header />
@@ -84,17 +86,19 @@ export default function Home() {
             <button
               type="button"
               onClick={() => {
-                trackEvent("cta_click", { location: "hero", button: "Подобрать код КТРУ" });
+                const label = ctaVariant === "alt" ? "нажал «Получить код КТРУ» в первом экране" : "нажал «Подобрать код КТРУ» в первом экране";
+                logEvent(label);
+                trackCtaConversion({ location: "hero" });
                 openChat();
               }}
               className="group relative inline-flex items-center justify-center gap-2 overflow-hidden rounded-xl bg-gradient-cta px-6 py-4 text-base font-bold text-white shadow-[0_0_30px_rgba(255,95,141,0.4)] transition-all hover:-translate-y-0.5 hover:shadow-[0_0_50px_rgba(255,95,141,0.6)] hover:scale-[1.02]"
             >
-              <span className="relative z-10">🎯 Подобрать код КТРУ</span>
+              <span className="relative z-10">{ctaVariant === "alt" ? "⚡ Получить код КТРУ за 10 секунд" : "🎯 Подобрать код КТРУ"}</span>
               <div className="absolute inset-0 animate-pulse bg-gradient-to-r from-transparent via-white/30 to-transparent" />
             </button>
             <Link
               href="#how"
-              onClick={() => trackEvent("link_click", { location: "hero", link: "Посмотреть, как работает", target: "#how" })}
+              onClick={() => logEvent("нажал «Посмотреть, как работает» в первом экране", { target: "#how" })}
               className="inline-flex items-center justify-center rounded-xl border border-white/30 bg-white/5 px-6 py-4 text-sm font-semibold text-white backdrop-blur-md transition-all hover:border-neo-electric hover:bg-white/10 hover:text-neo-electric hover:shadow-[0_0_25px_rgba(0,231,255,0.3)]"
             >
               Посмотреть, как работает
@@ -270,7 +274,7 @@ export default function Home() {
             <button
               type="button"
               onClick={() => {
-                trackEvent("cta_click", { location: "faq_section", button: "Подобрать код КТРУ" });
+                logEvent("нажал «Подобрать код КТРУ» в блоке FAQ");
                 openChat();
               }}
               className="inline-flex items-center gap-2 rounded-xl bg-gradient-cta px-8 py-4 text-base font-bold text-white shadow-[0_0_40px_rgba(255,95,141,0.5)] transition-all hover:-translate-y-0.5 hover:shadow-[0_0_60px_rgba(255,95,141,0.7)] hover:scale-[1.02]"
@@ -303,7 +307,7 @@ export default function Home() {
                 href="https://t.me/Aiexpertbuyerbot"
                 target="_blank"
                 rel="noopener noreferrer"
-                onClick={() => trackEvent("link_click", { location: "footer", link: "Telegram", url: "https://t.me/Aiexpertbuyerbot" })}
+                onClick={() => logEvent("нажал ссылку Telegram в футере", { url: "https://t.me/Aiexpertbuyerbot" })}
                 className="flex items-center gap-2 transition-colors hover:text-neo-electric"
               >
                 <span>💬</span>
@@ -313,7 +317,7 @@ export default function Home() {
                 href="https://zakupki44fz.ru/app/okpd2"
                 target="_blank"
                 rel="noopener noreferrer"
-                onClick={() => trackEvent("link_click", { location: "footer", link: "Сайт для закупщика", url: "https://zakupki44fz.ru/app/okpd2" })}
+                onClick={() => logEvent("нажал ссылку «Сайт для закупщика» в футере", { url: "https://zakupki44fz.ru/app/okpd2" })}
                 className="flex items-center gap-2 transition-colors hover:text-neo-electric"
               >
                 <span>🌐</span>
@@ -330,13 +334,13 @@ export default function Home() {
           <div className="space-y-4">
             <h3 className="font-display text-lg font-bold text-white">Полезные ссылки</h3>
             <div className="space-y-2 text-sm text-white/70">
-              <Link href="#how" onClick={() => trackEvent("link_click", { location: "footer", link: "Как это работает", target: "#how" })} className="block transition-colors hover:text-neo-electric">
+              <Link href="#how" onClick={() => logEvent("нажал «Как это работает» в футере", { target: "#how" })} className="block transition-colors hover:text-neo-electric">
                 Как это работает
               </Link>
-              <Link href="#audience" onClick={() => trackEvent("link_click", { location: "footer", link: "Для кого", target: "#audience" })} className="block transition-colors hover:text-neo-electric">
+              <Link href="#audience" onClick={() => logEvent("нажал «Для кого» в футере", { target: "#audience" })} className="block transition-colors hover:text-neo-electric">
                 Для кого
               </Link>
-              <Link href="#feedback" onClick={() => trackEvent("link_click", { location: "footer", link: "Оставить заявку", target: "#feedback" })} className="block transition-colors hover:text-neo-electric">
+              <Link href="#feedback" onClick={() => logEvent("нажал «Оставить заявку» в футере", { target: "#feedback" })} className="block transition-colors hover:text-neo-electric">
                 Оставить заявку
               </Link>
             </div>
