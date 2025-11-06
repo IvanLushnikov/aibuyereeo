@@ -740,7 +740,7 @@ export const ChatWidget = ({ mode = "drawer", defaultOpen = false, hideFloatingB
             ? `fixed top-0 right-0 z-50 h-full w-full max-w-2xl transform transition-transform duration-300 ease-in-out ${
           isOpen ? "translate-x-0" : "translate-x-full"
               }`
-            : "relative z-10 w-full"
+            : "relative z-10 w-full h-[520px] sm:h-[560px] lg:h-[600px]"
         }
         role="region"
         aria-label="Чат с ИИ‑ботом"
@@ -778,7 +778,7 @@ export const ChatWidget = ({ mode = "drawer", defaultOpen = false, hideFloatingB
           {/* Messages area */}
           <div
             ref={messagesContainerRef}
-            className="flex flex-1 flex-col gap-4 overflow-y-auto px-6 py-6"
+            className={`flex flex-col gap-4 overflow-y-auto px-6 py-6 ${mode === "drawer" ? "flex-1" : "flex-1"}`}
             role="log"
             aria-live="polite"
             aria-label="Сообщения чата"
