@@ -740,7 +740,7 @@ export const ChatWidget = ({ mode = "drawer", defaultOpen = false, hideFloatingB
             ? `fixed top-0 right-0 z-50 h-full w-full max-w-2xl transform transition-transform duration-300 ease-in-out ${
           isOpen ? "translate-x-0" : "translate-x-full"
               }`
-            : "relative z-10 w-full h-[520px] sm:h-[560px] lg:h-[600px]"
+            : "relative z-10 w-full h-[640px] sm:h-[700px] lg:h-[760px]"
         }
         role="region"
         aria-label="Чат с ИИ‑ботом"
@@ -825,21 +825,22 @@ export const ChatWidget = ({ mode = "drawer", defaultOpen = false, hideFloatingB
           <form ref={formRef} onSubmit={handleSubmit} className="border-t border-white/10 bg-neo-card/80 p-6">
             <input type="hidden" name="sessionId" value={sessionId} />
             <div className="flex items-center gap-3">
-              <input
+              <textarea
                 value={input}
                 onChange={(event) => setInput(event.target.value)}
                 onKeyDown={(event) => {
                   if (event.key === "Enter" && !event.shiftKey) {
                     event.preventDefault();
                     if (!isThinking && input.trim()) {
-                      const form = event.currentTarget.closest('form');
+                      const form = (event.currentTarget as HTMLTextAreaElement).closest('form');
                       if (form) {
                         form.requestSubmit();
                       }
                     }
                   }
                 }}
-                className="flex-1 rounded-xl border border-white/10 bg-white/5 px-5 py-4 text-base text-white placeholder:text-white/40 focus:border-neo-electric focus:outline-none focus:ring-2 focus:ring-neo-electric/30"
+                rows={2}
+                className="flex-1 resize-none rounded-xl border border-white/10 bg-white/5 px-5 py-4 text-base text-white placeholder:text-white/40 focus:border-neo-electric focus:outline-none focus:ring-2 focus:ring-neo-electric/30 min-h-[56px]"
                 placeholder="Опишите, что хотите купить (простыми словами)…"
                 maxLength={2000}
                 aria-label="Сообщение для ИИ‑бота"
