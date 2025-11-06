@@ -24,7 +24,12 @@ const isValidEmail = (email: string): boolean => {
 let lastSubmitTime = 0;
 const MIN_SUBMIT_INTERVAL = 3000;
 
-export const FeedbackForm = () => {
+type FeedbackFormProps = {
+  abExperimentId?: string;
+  abPlacement?: string;
+};
+
+export const FeedbackForm = ({ abExperimentId, abPlacement }: FeedbackFormProps) => {
   const [state, setState] = useState<FormState>("idle");
   const [error, setError] = useState<string | null>(null);
   const [emailError, setEmailError] = useState<string | null>(null);
@@ -63,6 +68,10 @@ export const FeedbackForm = () => {
     }
 
     try {
+      // A/B конверсия: фиксируем для конкретного эксперимента, если он передан
+      if (abExperimentId) {
+        logEvent("AB конверсия: отправка формы", { experimentId: abExperimentId, placement: abPlacement ?? "unknown" }).catch(() => {});
+      }
       // Лог клика по кнопке отправки формы
       logEvent("нажал «Отправить форму» в блоке заявки").catch(() => {});
 

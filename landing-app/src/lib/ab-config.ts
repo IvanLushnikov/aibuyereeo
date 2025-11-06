@@ -19,6 +19,13 @@ export const experiments: ExperimentDefinition[] = [
       { name: "alt", weight: 1 },
     ],
   },
+  {
+    id: "features_to_form",
+    variants: [
+      { name: "features", weight: 1 }, // вариант A — как сейчас (список «Что умеет…»)
+      { name: "form", weight: 1 },     // вариант B — вместо блока показываем форму
+    ],
+  },
 ];
 
 export function getExperimentDefinition(experimentId: string): ExperimentDefinition | undefined {
