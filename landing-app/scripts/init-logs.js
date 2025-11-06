@@ -19,6 +19,15 @@ const LOG_DIRS = [
   path.join(process.cwd(), 'logs'), // Папка в проекте
 ];
 
+function getErrorDetails(error) {
+  if (error && typeof error === "object") {
+    const code = "code" in error ? error.code : null;
+    const message = "message" in error ? error.message : null;
+    return code || message || JSON.stringify(error);
+  }
+  return String(error);
+}
+
 async function initLogs() {
   let createdDir = null;
   let errorMessages = [];
@@ -36,7 +45,7 @@ async function initLogs() {
         return dir;
       } catch (statError) {
         // Папка не существует, пытаемся создать
-        if (statError.code === 'ENOENT') {
+        if (statError && typeof statError === 'object' && statError.code === 'ENOENT') {
           try {
             await mkdir(dir, { recursive: true });
             console.log(`[Init Logs] ✅ Создана папка для логов: ${dir}`);
@@ -44,20 +53,18 @@ async function initLogs() {
             createdDir = dir;
             return dir;
           } catch (mkdirError) {
-            const error = mkdirError as NodeJS.ErrnoException;
-            errorMessages.push(`  - ${dir}: ${error.code || error.message}`);
+            errorMessages.push(`  - ${dir}: ${getErrorDetails(mkdirError)}`);
             // Пробуем следующий вариант
             continue;
           }
         } else {
           // Другая ошибка (например, нет прав доступа)
-          errorMessages.push(`  - ${dir}: ${statError.code || statError.message}`);
+          errorMessages.push(`  - ${dir}: ${getErrorDetails(statError)}`);
           continue;
         }
       }
     } catch (error) {
-      const err = error as NodeJS.ErrnoException;
-      errorMessages.push(`  - ${dir}: ${err.code || err.message}`);
+      errorMessages.push(`  - ${dir}: ${getErrorDetails(error)}`);
       continue;
     }
   }
