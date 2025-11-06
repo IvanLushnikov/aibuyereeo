@@ -741,7 +741,7 @@ export const ChatWidget = ({ mode = "drawer", defaultOpen = false, hideFloatingB
         <div className={
           mode === "drawer"
             ? "flex h-full w-full flex-col overflow-hidden border-l border-white/10 bg-neo-card/98 backdrop-blur-xl shadow-2xl"
-            : "flex w-full flex-col overflow-hidden rounded-2xl border border-white/10 bg-neo-card/90 backdrop-blur-xl shadow-2xl"
+            : "flex h-full w-full flex-col overflow-hidden rounded-2xl border border-white/10 bg-neo-card/90 backdrop-blur-xl shadow-2xl"
         }>
           {/* Header */}
           <header className={`flex items-center justify-between gap-3 px-6 py-5 ${mode === "drawer" ? "border-b border-white/10" : "border-b border-white/5"}`}>
