@@ -126,22 +126,21 @@ const renderFormattedMessage = (content: string) => {
     // Ищем паттерн: цифры, точки, дефис, цифры (но не в уже найденных URL)
     // Паттерн: 2 цифры.2 цифры.2 цифры.3 цифры-8-9 цифр
     const ktruRegex = /\b(\d{2}\.\d{2}\.\d{2}\.\d{3}-\d{8,9})\b/g;
-    let ktruMatch;
-    while ((ktruMatch = ktruRegex.exec(text)) !== null) {
+    for (let match = ktruRegex.exec(text); match !== null; match = ktruRegex.exec(text)) {
       // Проверяем, не является ли это частью уже найденного URL
       const isPartOfUrl = allMatches.some(m => 
         m.type === 'url' && 
-        ktruMatch.index >= m.index && 
-        ktruMatch.index < m.index + m.length
+        match.index >= m.index && 
+        match.index < m.index + m.length
       );
       
       if (!isPartOfUrl) {
         allMatches.push({
-          index: ktruMatch.index,
+          index: match.index,
           type: 'ktru',
-          text: ktruMatch[1],
-          length: ktruMatch[0].length,
-          url: `https://zakupki44fz.ru/app/okpd2/${ktruMatch[1]}`,
+          text: match[1],
+          length: match[0].length,
+          url: `https://zakupki44fz.ru/app/okpd2/${match[1]}`,
         });
       }
     }
