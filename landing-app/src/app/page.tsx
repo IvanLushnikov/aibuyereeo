@@ -123,7 +123,7 @@ export default function Home() {
                 <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-green-500/20 to-emerald-500/20 text-lg backdrop-blur-sm shadow-[0_0_15px_rgba(34,197,94,0.2)]">
                   🛰️
                 </span>
-                <span>Проверяет соответствие ОКПД2 и подсвечивает риски до подачи заявки</span>
+                <span>Подсвечивает неоднозначности запроса и помогает выбрать корректный код КТРУ</span>
               </li>
             </ul>
           </div>
