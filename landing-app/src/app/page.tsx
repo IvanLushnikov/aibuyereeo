@@ -1,13 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { ChatWidget, openChat, startChatWith } from "@/components/chat-widget";
+import { ChatWidget, openChat } from "@/components/chat-widget";
 import { FeedbackForm } from "@/components/feedback-form";
 import { Header } from "@/components/header";
 import { logEvent } from "@/lib/analytics";
 import { useExperiment } from "@/lib/ab-client";
 import { AbDebugBadge } from "@/components/ab-debug-badge";
-import { useState } from "react";
 
 const audience = [
   {
@@ -51,70 +50,11 @@ const features = [
   "Бесплатно в браузере",
 ];
 
-const faq = [
-  { question: "Как быстро отвечает сервис?", answer: "Обычно 5–15 секунд. При высокой нагрузке отображается индикатор ожидания." },
-  { question: "Нужно ли что‑то устанавливать?", answer: "Нет, всё работает в браузере." },
-  { question: "Откуда данные?", answer: "Официальный классификатор КТРУ. Обновления выполняются по плану." },
-  { question: "Соответствует ли 44‑ФЗ/223‑ФЗ?", answer: "Сервис помогает проверить обязательные характеристики КТРУ, но не заменяет правовую экспертизу." },
-  { question: "Кто принимает финальное решение?", answer: "Рекомендации носят справочный характер; окончательное решение принимает ответственное лицо." },
-  { question: "Можно ли выгрузить обоснование?", answer: "Да, доступен экспорт с перечнем кодов КТРУ и ссылками на карточки." },
+const pains = [
+  "Часы на ручной подбор кода КТРУ",
+  "Неуверенность: тот ли это код",
+  "Рутины много — времени нет",
 ];
-
-function HypothesisStarter() {
-  const [value, setValue] = useState("");
-  const examples = [
-    "Мониторы 24″ для школы, 10 шт.",
-    "Услуги по уборке офисных помещений",
-    "Грузовой автомобиль грузоподъёмностью 3 т",
-  ];
-
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const text = value.trim();
-    if (!text) return;
-    logEvent("hypothesis_input_submit", { length: text.length, placement: "hero_right" });
-    startChatWith(text);
-  };
-
-  return (
-    <div className="space-y-4">
-      <form onSubmit={handleSubmit} className="flex items-center gap-3">
-        <input
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          onFocus={() => logEvent("hypothesis_input_focus", { placement: "hero_right" })}
-          placeholder="Опишите, что нужно купить…"
-          className="flex-1 rounded-xl border border-white/20 bg-white/10 px-5 py-4 text-base text-white placeholder:text-white/40 focus:border-neo-electric focus:outline-none focus:ring-2 focus:ring-neo-electric/30"
-          maxLength={2000}
-          aria-label="Описание закупки"
-        />
-        <button
-          type="submit"
-          className="rounded-xl bg-gradient-cta px-6 py-4 text-base font-semibold text-neo-night transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
-          disabled={!value.trim()}
-        >
-          Проверить
-        </button>
-      </form>
-      <div className="flex flex-wrap gap-2">
-        {examples.map((ex) => (
-          <button
-            key={ex}
-            type="button"
-            onClick={() => {
-              setValue(ex);
-              logEvent("hypothesis_example_click", { example: ex });
-              startChatWith(ex);
-            }}
-            className="rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-xs text-white/80 transition hover:border-neo-electric/40 hover:text-neo-electric"
-          >
-            {ex}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 export default function Home() {
   const { variant: ctaVariant, trackConversion: trackCtaConversion } = useExperiment("cta_text");
@@ -136,195 +76,43 @@ export default function Home() {
             ИИ‑бот для госзакупок
           </div>
           <h1 className="font-display text-4xl leading-[1.1] tracking-tight sm:text-5xl lg:text-6xl">
-            Секунды вместо часов: ИИ‑бот подбирает код КТРУ за вас
+            Подбираем код КТРУ за секунды
           </h1>
           <p className="max-w-2xl text-lg leading-relaxed text-white/80">
-            Опишите закупку простыми словами — бот быстро предложит подходящий код КТРУ. Бесплатно и без регистрации.
+            Опишите закупку простыми словами — получите 1–3 кода КТРУ с обязательными характеристиками. Прямо в чате, бесплатно и без регистрации.
           </p>
+          <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {pains.map((text) => (
+              <li key={text} className="flex items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-sm text-white/85">
+                <span className="text-neo-electric">✶</span>
+                <span>{text}</span>
+              </li>
+            ))}
+          </ul>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <button
               type="button"
               onClick={() => {
-                const label = ctaVariant === "alt" ? "нажал «Получить код КТРУ» в первом экране" : "нажал «Подобрать код КТРУ» в первом экране";
-                logEvent(label);
-                trackCtaConversion({ location: "hero" });
-                openChat();
+                logEvent("нажал «Оставить заявку» в первом экране");
+                const el = document.getElementById("feedback");
+                el?.scrollIntoView({ behavior: "smooth" });
               }}
-              className="group relative inline-flex items-center justify-center gap-2 overflow-hidden rounded-xl bg-gradient-cta px-6 py-4 text-base font-bold text-white shadow-[0_0_30px_rgba(255,95,141,0.4)] transition-all hover:-translate-y-0.5 hover:shadow-[0_0_50px_rgba(255,95,141,0.6)] hover:scale-[1.02]"
+              className="inline-flex items-center justify-center rounded-xl bg-gradient-cta px-6 py-4 text-base font-bold text-neo-night shadow-[0_0_30px_rgba(255,95,141,0.4)] transition-all hover:-translate-y-0.5 hover:shadow-[0_0_50px_rgba(255,95,141,0.6)] hover:scale-[1.02]"
             >
-              <span className="relative z-10">{ctaVariant === "alt" ? "⚡ Получить код КТРУ за 10 секунд" : "🎯 Подобрать код КТРУ"}</span>
-              <div className="absolute inset-0 animate-pulse bg-gradient-to-r from-transparent via-white/30 to-transparent" />
-            </button>
-            <Link
-              href="#how"
-              onClick={() => logEvent("нажал «Посмотреть, как работает» в первом экране", { target: "#how" })}
-              className="inline-flex items-center justify-center rounded-xl border border-white/30 bg-white/5 px-6 py-4 text-sm font-semibold text-white backdrop-blur-md transition-all hover:border-neo-electric hover:bg-white/10 hover:text-neo-electric hover:shadow-[0_0_25px_rgba(0,231,255,0.3)]"
-            >
-              Посмотреть, как работает
-            </Link>
-          </div>
-        </div>
-        <div className="relative overflow-hidden rounded-2xl border border-white/20 bg-gradient-to-br from-white/10 via-white/5 to-transparent p-6 shadow-[0_20px_60px_rgba(0,231,255,0.15)] backdrop-blur-xl lg:p-8">
-          <div className="absolute inset-0 bg-gradient-hero opacity-20" />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(125,47,255,0.3),transparent_70%)]" />
-          <div className="relative space-y-5">
-            <div className="space-y-4">
-              <h2 className="font-display text-2xl font-bold text-white">Проверьте гипотезу на своём кейсе</h2>
-              <HypothesisStarter />
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section id="audience" className="space-y-8">
-        <header className="space-y-2">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-neo-electric">
-            Для кого
-          </p>
-          <h2 className="font-display text-3xl font-bold leading-tight sm:text-4xl lg:text-5xl">
-            ИИ‑бот помогает всем участникам закупки
-          </h2>
-        </header>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {audience.map((item, index) => (
-            <div
-              key={item.title}
-              className="group relative overflow-hidden rounded-2xl border border-white/20 bg-gradient-to-br from-white/10 to-white/5 p-6 shadow-[0_20px_60px_rgba(0,0,0,0.3)] backdrop-blur-xl transition-all hover:-translate-y-1 hover:border-neo-electric/50 hover:shadow-[0_30px_80px_rgba(0,231,255,0.2)]"
-            >
-              <div className="absolute -right-6 -top-6 h-20 w-20 rounded-full bg-gradient-to-br from-neo-electric/30 to-neo-glow/30 blur-3xl transition-all group-hover:scale-150 group-hover:opacity-60" />
-              <div className="relative space-y-3">
-                <div className="text-3xl">{item.icon}</div>
-                <h3 className="font-display text-xl font-bold">{item.title}</h3>
-                <p className="text-sm leading-relaxed text-white/75">{item.description}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section id="how" className="space-y-8">
-        <header className="space-y-2">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-neo-electric">Процесс</p>
-          <h2 className="font-display text-3xl font-bold leading-tight sm:text-4xl lg:text-5xl">
-            Как ИИ‑бот работает с вашим запросом
-          </h2>
-        </header>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {steps.map((step, index) => (
-            <div
-              key={step.title}
-              className="group relative flex flex-col gap-3 overflow-hidden rounded-2xl border border-white/20 bg-gradient-to-br from-white/10 to-white/5 p-5 text-base shadow-[0_20px_60px_rgba(0,0,0,0.3)] backdrop-blur-xl transition-all hover:-translate-y-1 hover:border-neo-electric/50 hover:shadow-[0_30px_80px_rgba(0,231,255,0.15)]"
-            >
-              <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl border-2 border-white/30 bg-gradient-to-br from-neo-electric/20 to-neo-glow/20 font-display text-xl font-bold text-white backdrop-blur-sm transition-all group-hover:scale-110 group-hover:border-neo-electric group-hover:bg-neo-electric/30 shadow-[0_0_20px_rgba(0,231,255,0.2)]">
-                {index + 1}
-              </div>
-              <h3 className="font-display text-lg font-bold text-white">{step.title}</h3>
-              <p className="text-sm leading-relaxed text-white/75">{step.text}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="space-y-8">
-        <header className="space-y-2">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-neo-electric">Закрываем боли</p>
-          <h2 className="font-display text-3xl font-bold leading-tight sm:text-4xl lg:text-5xl">
-            Решаем реальные задачи из практики
-          </h2>
-        </header>
-        <div className="grid gap-4 lg:grid-cols-2">
-          {painSolutions.map((item) => (
-            <div
-              key={item.pain}
-              className="group relative overflow-hidden rounded-2xl border border-white/20 bg-gradient-to-br from-white/10 to-white/5 p-6 shadow-[0_20px_60px_rgba(0,0,0,0.3)] backdrop-blur-xl transition-all hover:-translate-y-1 hover:border-neo-sunrise/50 hover:shadow-[0_30px_80px_rgba(255,95,141,0.15)]"
-            >
-              <div className="absolute inset-0 bg-gradient-to-br from-neo-sunrise/5 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
-              <div className="relative">
-                <p className="text-xs font-bold uppercase tracking-[0.3em] text-neo-sunrise">
-                  Боль
-                </p>
-                <h3 className="mt-2 font-display text-xl font-bold text-white">{item.pain}</h3>
-                <div className="mt-4 flex items-baseline gap-2">
-                  <span className="text-xl leading-none text-neo-electric">→</span>
-                  <p className="text-sm leading-relaxed text-white/80">{item.solution}</p>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="space-y-8">
-        <header className="space-y-2">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-neo-electric">Что внутри</p>
-          <h2 className="font-display text-3xl font-bold leading-tight sm:text-4xl lg:text-5xl">
-            Что внутри
-          </h2>
-        </header>
-        <div className="grid gap-3 sm:grid-cols-2">
-          {features.map((feature) => (
-            <div
-              key={feature}
-              className="group flex items-center gap-3 rounded-xl border border-white/20 bg-gradient-to-br from-white/10 to-white/5 p-4 text-sm shadow-[0_20px_60px_rgba(0,0,0,0.3)] backdrop-blur-xl transition-all hover:-translate-y-0.5 hover:border-neo-electric/50 hover:shadow-[0_30px_80px_rgba(0,231,255,0.15)]"
-            >
-              <span className="text-xl text-neo-electric transition-transform group-hover:scale-125 group-hover:rotate-12">✶</span>
-              <span className="font-medium text-white/85">{feature}</span>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="space-y-8">
-        <header className="space-y-2">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-neo-electric">FAQ</p>
-          <h2 className="font-display text-3xl font-bold leading-tight sm:text-4xl lg:text-5xl">
-            Часто задаваемые вопросы
-          </h2>
-        </header>
-        <div className="space-y-3">
-          {faq.map((item) => (
-            <details
-              key={item.question}
-              className="group rounded-xl border border-white/20 bg-gradient-to-br from-white/10 to-white/5 p-5 shadow-[0_20px_60px_rgba(0,0,0,0.3)] backdrop-blur-xl transition-all hover:border-neo-electric/50 open:border-neo-electric/50"
-            >
-              <summary className="flex cursor-pointer items-center justify-between gap-4 font-display text-base font-semibold text-white">
-                {item.question}
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-neo-electric/20 text-xl font-light text-neo-electric transition-transform group-open:rotate-45 group-open:bg-neo-electric/30">
-                  +
-                </span>
-              </summary>
-              <p className="mt-3 text-sm leading-relaxed text-white/75">{item.answer}</p>
-            </details>
-          ))}
-        </div>
-        <div className="relative overflow-hidden rounded-2xl border-2 border-neo-electric/50 bg-gradient-to-br from-neo-electric/20 via-neo-glow/10 to-neo-sunrise/10 p-8 text-center shadow-[0_0_60px_rgba(0,231,255,0.3)] backdrop-blur-xl">
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-pulse" />
-          <div className="relative space-y-4">
-            <h3 className="font-display text-2xl font-bold text-white sm:text-3xl">Готовы попробовать?</h3>
-            <p className="mx-auto max-w-2xl text-base text-white/90">Начните прямо сейчас — это бесплатно и займёт меньше минуты</p>
-            <div className="flex flex-wrap justify-center gap-2 mb-4">
-              <span className="flex items-center gap-2 rounded-lg border border-neo-electric/40 bg-gradient-to-r from-neo-electric/20 to-neo-electric/10 px-4 py-1.5 text-xs font-semibold text-neo-electric backdrop-blur-sm">
-                ⚡ Бесплатно
-              </span>
-              <span className="flex items-center gap-2 rounded-lg border border-white/20 bg-white/5 px-4 py-1.5 text-xs font-medium text-white/80 backdrop-blur-sm">
-                🛡️ Без регистрации
-              </span>
-              <span className="flex items-center gap-2 rounded-lg border border-white/20 bg-white/5 px-4 py-1.5 text-xs font-medium text-white/80 backdrop-blur-sm">
-                🧠 Актуальная база КТРУ
-              </span>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                logEvent("нажал «Подобрать код КТРУ» в блоке FAQ");
-                openChat();
-              }}
-              className="inline-flex items-center gap-2 rounded-xl bg-gradient-cta px-8 py-4 text-base font-bold text-white shadow-[0_0_40px_rgba(255,95,141,0.5)] transition-all hover:-translate-y-0.5 hover:shadow-[0_0_60px_rgba(255,95,141,0.7)] hover:scale-[1.02]"
-            >
-              <span>🎯 Подобрать код КТРУ</span>
+              Оставить заявку
             </button>
           </div>
         </div>
+        {/* Правая колонка больше не нужна */}
+      </section>
+
+      {/* Встроенный чат */}
+      <section className="space-y-6">
+        <header className="space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-neo-electric">Чат</p>
+          <h2 className="font-display text-3xl font-bold leading-tight sm:text-4xl lg:text-5xl">Проверьте свой запрос сразу</h2>
+        </header>
+        <ChatWidget mode="inline" defaultOpen hideFloatingButton />
       </section>
 
       <section id="feedback" className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">

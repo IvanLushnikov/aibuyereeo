@@ -332,8 +332,14 @@ export const startChatWith = (message: string) => {
   }
 };
 
-export const ChatWidget = () => {
-  const [isOpen, setIsOpen] = useState(false);
+type ChatWidgetProps = {
+  mode?: "drawer" | "inline"; // inline — встроенный блок без оверлея и плавающей кнопки
+  defaultOpen?: boolean; // по умолчанию открывать чат
+  hideFloatingButton?: boolean; // прятать плавающую кнопку (актуально для drawer)
+};
+
+export const ChatWidget = ({ mode = "drawer", defaultOpen = false, hideFloatingButton = false }: ChatWidgetProps) => {
+  const [isOpen, setIsOpen] = useState(mode === "inline" ? true : defaultOpen);
   const [hasOpened, setHasOpened] = useState(false);
   const [input, setInput] = useState("");
   const [isThinking, setIsThinking] = useState(false);
@@ -688,19 +694,21 @@ export const ChatWidget = () => {
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => handleToggle()}
-        aria-label={isOpen ? "Закрыть чат" : "Подобрать код КТРУ"}
-        aria-expanded={isOpen}
-        className="group fixed bottom-6 right-6 z-40 flex items-center justify-center gap-2 overflow-hidden rounded-full bg-gradient-cta px-6 py-3 text-base font-bold text-neo-night shadow-[0_0_30px_rgba(255,95,141,0.6)] transition-all duration-300 hover:scale-105 hover:shadow-[0_0_40px_rgba(255,95,141,0.8)] focus:outline-none focus:ring-4 focus:ring-neo-electric/40 md:px-8 md:py-4 md:text-lg"
-      >
-        <span className="relative z-10">🎯 Подобрать код КТРУ</span>
-        <div className="absolute inset-0 animate-pulse bg-gradient-to-r from-transparent via-white/20 to-transparent" />
-      </button>
+      {mode === "drawer" && !hideFloatingButton && (
+        <button
+          type="button"
+          onClick={() => handleToggle()}
+          aria-label={isOpen ? "Закрыть чат" : "Подобрать код КТРУ"}
+          aria-expanded={isOpen}
+          className="group fixed bottom-6 right-6 z-40 flex items-center justify-center gap-2 overflow-hidden rounded-full bg-gradient-cta px-6 py-3 text-base font-bold text-neo-night shadow-[0_0_30px_rgba(255,95,141,0.6)] transition-all duration-300 hover:scale-105 hover:shadow-[0_0_40px_rgba(255,95,141,0.8)] focus:outline-none focus:ring-4 focus:ring-neo-electric/40 md:px-8 md:py-4 md:text-lg"
+        >
+          <span className="relative z-10">🎯 Подобрать код КТРУ</span>
+          <div className="absolute inset-0 animate-pulse bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+        </button>
+      )}
 
       {/* Overlay для закрытия drawer */}
-      {isOpen && (
+      {mode === "drawer" && isOpen && (
         <div
           className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm transition-opacity"
           onClick={() => handleToggle()}
@@ -708,16 +716,23 @@ export const ChatWidget = () => {
         />
       )}
 
-      {/* Drawer - боковая панель справа */}
+      {/* Контейнер чата: drawer или inline */}
       <div
-        className={`fixed top-0 right-0 z-50 h-full w-full max-w-2xl transform transition-transform duration-300 ease-in-out ${
-          isOpen ? "translate-x-0" : "translate-x-full"
-        }`}
-        role="dialog"
+        className={
+          mode === "drawer"
+            ? `fixed top-0 right-0 z-50 h-full w-full max-w-2xl transform transition-transform duration-300 ease-in-out ${
+                isOpen ? "translate-x-0" : "translate-x-full"
+              }`
+            : "relative z-10 w-full"
+        }
+        role="region"
         aria-label="Чат с ИИ‑ботом"
-        aria-modal="true"
       >
-        <div className="flex h-full w-full flex-col overflow-hidden border-l border-white/10 bg-neo-card/98 backdrop-blur-xl shadow-2xl">
+        <div className={
+          mode === "drawer"
+            ? "flex h-full w-full flex-col overflow-hidden border-l border-white/10 bg-neo-card/98 backdrop-blur-xl shadow-2xl"
+            : "flex w-full flex-col overflow-hidden rounded-2xl border border-white/10 bg-neo-card/90 backdrop-blur-xl shadow-2xl"
+        }>
           {/* Header */}
           <header className="flex items-center justify-between gap-3 border-b border-white/10 px-6 py-5">
             <div className="flex items-center gap-3">
