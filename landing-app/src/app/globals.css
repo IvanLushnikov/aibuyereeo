@@ -17,6 +17,16 @@ body {
   background-attachment: fixed;
 }
 
+select option,
+select optgroup {
+  color: #080b1a;
+  background-color: #ffffff;
+}
+
+select option:checked {
+  background-color: rgba(125, 47, 255, 0.15);
+}
+
 ::-webkit-scrollbar {
   width: 10px;
 }

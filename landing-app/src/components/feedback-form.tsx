@@ -256,7 +256,7 @@ export const FeedbackForm = ({ abExperimentId, abPlacement, abVariant }: Feedbac
             className="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-white focus:border-neo-electric focus:outline-none"
           >
             {roles.map((role) => (
-              <option key={role} value={role} className="bg-neo-card text-white">
+              <option key={role} value={role}>
                 {role}
               </option>
             ))}
