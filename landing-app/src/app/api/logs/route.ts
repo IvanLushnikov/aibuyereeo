@@ -70,8 +70,15 @@ export async function GET(request: Request) {
       });
     }
 
-    // Парсим заголовки (если есть)
-    const events = lines.slice(1).map((line, index) => {
+    const headerCandidate = lines[0]?.toLowerCase() ?? "";
+    const hasHeader =
+      headerCandidate.includes("timestamp") &&
+      headerCandidate.includes("event");
+
+    const rows = hasHeader ? lines.slice(1) : lines;
+
+    // Парсим CSV строки
+    const events = rows.map((line) => {
       // Простой CSV парсинг (может не работать для сложных JSON в payload)
       const parts: string[] = [];
       let current = "";
@@ -146,4 +153,5 @@ export async function GET(request: Request) {
     );
   }
 }
+
 
