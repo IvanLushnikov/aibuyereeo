@@ -16,7 +16,7 @@ export const Header = () => {
             🤖
           </div>
           <div className="hidden sm:block">
-            <p className="font-display text-base font-bold text-white leading-tight">ИИ‑бот для госзакупок</p>
+            <p className="font-display text-base font-bold text-white leading-tight">ИИ‑бот для инициатора</p>
             <p className="text-xs text-white/60 leading-tight">Подбор КТРУ за минуты</p>
           </div>
           <div className="sm:hidden">

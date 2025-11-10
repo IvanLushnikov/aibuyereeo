@@ -8,52 +8,25 @@ import { logEvent } from "@/lib/analytics";
 import { useExperiment } from "@/lib/ab-client";
 import { AbDebugBadge } from "@/components/ab-debug-badge";
 
-const audience = [
-  {
-    title: "Инициаторы",
-    description:
-      "Опишите предмет закупки — сервис предложит коды КТРУ и список обязательных характеристик с обоснованием.",
-    icon: "💡",
-  },
-  {
-    title: "Контрактные управляющие и закупщики",
-    description:
-      "Ссылки на карточки КТРУ, журнал проверок и прозрачное обоснование выбора.",
-    icon: "📊",
-  },
-  {
-    title: "Технические специалисты",
-    description:
-      "Структурированные требования и шаблоны ТЗ без лишней рутины.",
-    icon: "🛠️",
-  },
-];
-
 const steps = [
-  { title: "Опишите, что нужно купить", text: "Например: «мониторы 24″ для школы, 10 шт.»" },
-  { title: "Поболтайте с ИИ в чате", text: "Короткий диалог — уточним важные детали без бюрократии." },
-  { title: "Получите код КТРУ", text: "Сразу используйте в заявке. Секунды вместо часов." },
+  { title: "Напишите, что нужно купить", text: "Например: «мониторы 24″ для школы, 10 шт.»" },
+  { title: "Уточните детали по ходу", text: "Диагональ, назначение, особенности — бот спросит сам." },
+  { title: "Получите 1–3 кода", text: "С характеристиками и ссылкой — можно сразу передать закупкам." },
 ];
 
-const painSolutions = [
-  { pain: "Часы уходят на ручной подбор кода КТРУ", solution: "Секунды вместо часов — бот подберёт код за вас." },
-  { pain: "Приходится ковыряться в классификаторе", solution: "Общайтесь по‑человечески в чате — без бюрократии." },
-  { pain: "Сомнения, тот ли это код", solution: "Получите 1–3 ближайших варианта для быстрого выбора." },
-  { pain: "Нет времени на настройки", solution: "Работает сразу в браузере. Бесплатно, без регистрации." },
-];
+const features = ["1–3 кода сразу", "Характеристики в ответе", "Уточняем вопросы по делу"];
 
-
-const features = [
-  "Актуальная база КТРУ",
-  "Ответ за 5–15 секунд",
-  "Удобный чат без регистрации",
-  "Бесплатно в браузере",
-];
-
-const pains = [
-  "Часы на ручной подбор кода КТРУ",
-  "Неуверенность: тот ли это код",
-  "Рутины много — времени нет",
+const sampleDialogue: Array<{ role: "user" | "bot"; text: string }> = [
+  { role: "user", text: "Привет!" },
+  { role: "bot", text: "Что нужно купить? Опишите простыми словами." },
+  { role: "user", text: "Монитор 21,3 дюйма для офиса" },
+  { role: "bot", text: "Записал. Подойдёт разрешение 1920×1080 и панель IPS?" },
+  {
+    role: "bot",
+    text: `Код КТРУ: 26.20.17.110-00000040
+Ссылка: https://zakupki44fz.ru/app/okpd2/26.20.17.110-00000040
+Характеристики: диагональ 21,3", разрешение 1920×1080, соотношение 16:9.`,
+  },
 ];
 
 export default function Home() {
@@ -69,60 +42,124 @@ export default function Home() {
         <div className="absolute left-1/2 top-1/2 h-64 w-64 -translate-x-1/2 -translate-y-1/2 rounded-full bg-neo-sunrise/10 blur-3xl" />
       </div>
 
-      <section className="relative grid gap-8 lg:grid-cols-[1.2fr_1fr] lg:items-start lg:gap-12">
-        <div className="space-y-6">
-          <div className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-gradient-to-r from-white/10 to-white/5 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-white/90 backdrop-blur-sm">
-            <span className="h-1.5 w-1.5 rounded-full bg-neo-electric animate-pulse" />
-            ИИ‑бот для госзакупок
+      <section className="relative grid gap-20 lg:grid-cols-[1.05fr_0.95fr] lg:items-start">
+        <div className="space-y-12">
+          <div className="space-y-6">
+            <h1 className="font-display text-5xl leading-[1.02] tracking-tight sm:text-6xl lg:text-7xl">
+              Коды без боли
+            </h1>
+            <p className="max-w-2xl text-xl leading-relaxed text-white/80">
+              Подбираем КТРУ за минуты вместо часов: опишите закупку простыми словами, бот уточнит детали и предложит варианты с характеристиками.
+            </p>
           </div>
-          <h1 className="font-display text-4xl leading-[1.1] tracking-tight sm:text-5xl lg:text-6xl">
-            Подбираем код КТРУ за секунды
-          </h1>
-          <p className="max-w-2xl text-lg leading-relaxed text-white/80">
-            Опишите закупку простыми словами — получите 1–3 кода КТРУ с обязательными характеристиками. Прямо в чате, бесплатно и без регистрации.
-          </p>
-          <div className="space-y-2">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-neo-electric">Проблемы</p>
-            <h2 className="font-display text-xl font-bold text-white">Что мы закрываем</h2>
-          </div>
-          <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            {pains.map((text) => (
-              <li key={text} className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-white/80">
-                <span className="text-neo-electric">✶</span>
-                <span>{text}</span>
-              </li>
-            ))}
-          </ul>
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="flex flex-wrap gap-7">
             <button
               type="button"
               onClick={() => {
-                logEvent("нажал «Оставить заявку» в первом экране");
+                logEvent("нажал «Попробовать в чате» в первом экране");
+                openChat();
+              }}
+              className="inline-flex items-center justify-center rounded-2xl bg-gradient-cta px-9 py-5 text-lg font-bold text-neo-night shadow-[0_0_40px_rgba(255,95,141,0.45)] transition-all hover:-translate-y-0.5 hover:shadow-[0_0_60px_rgba(255,95,141,0.65)] hover:scale-[1.02]"
+            >
+              Попробовать в чате
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                logEvent("нажал «Оставить заявку» в первом экране", { target: "#feedback" });
                 const el = document.getElementById("feedback");
                 el?.scrollIntoView({ behavior: "smooth" });
               }}
-              className="inline-flex items-center justify-center rounded-xl bg-gradient-cta px-6 py-4 text-base font-bold text-neo-night shadow-[0_0_30px_rgba(255,95,141,0.4)] transition-all hover:-translate-y-0.5 hover:shadow-[0_0_50px_rgba(255,95,141,0.6)] hover:scale-[1.02]"
+              className="inline-flex items-center justify-center rounded-2xl border border-white/15 px-9 py-5 text-lg font-semibold text-white transition-all hover:border-white/35 hover:bg-white/10"
             >
               Оставить заявку
             </button>
           </div>
+          <ul className="flex flex-wrap gap-4">
+            {features.map((text) => (
+              <li
+                key={text}
+                className="rounded-full border border-white/15 px-6 py-2.5 text-sm font-semibold uppercase tracking-[0.18em] text-white/75"
+              >
+                {text}
+              </li>
+            ))}
+          </ul>
         </div>
-        {/* Правая колонка — встроенный чат */}
-        <div className="relative overflow-hidden rounded-2xl border border-white/20 bg-gradient-to-br from-white/10 via-white/5 to-transparent p-3 sm:p-4 lg:p-5 shadow-[0_20px_60px_rgba(0,231,255,0.12)] backdrop-blur-xl">
+        <div className="relative overflow-hidden rounded-4xl border border-white/15 bg-gradient-to-br from-white/10 via-white/5 to-transparent p-8 shadow-[0_35px_80px_rgba(0,231,255,0.16)] backdrop-blur-2xl">
           <ChatWidget mode="inline" defaultOpen hideFloatingButton />
         </div>
       </section>
 
-      {/* Секция чата отдельно больше не нужна */}
+      <section className="space-y-14">
+        <div className="space-y-2 text-center">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-neo-electric">Как работает</p>
+          <h2 className="font-display text-3xl font-bold text-white sm:text-4xl">Три шага до кода</h2>
+        </div>
+        <div className="grid gap-6 md:grid-cols-3">
+          {steps.map((step, index) => (
+            <div
+              key={step.title}
+              className="flex h-full flex-col gap-4 rounded-2xl border border-white/10 bg-white/5 px-7 py-9 text-white/80 shadow-[0_18px_50px_rgba(0,0,0,0.18)]"
+            >
+              <span className="text-sm font-semibold uppercase tracking-[0.2em] text-neo-electric">Шаг {index + 1}</span>
+              <h3 className="font-display text-xl font-bold text-white">{step.title}</h3>
+              <p className="text-sm leading-relaxed">{step.text}</p>
+            </div>
+          ))}
+        </div>
+      </section>
 
-      <section id="feedback" className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
+      <section className="space-y-12">
+        <div className="space-y-2 text-center">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-neo-electric">Пример диалога</p>
+          <h2 className="font-display text-3xl font-bold text-white sm:text-4xl">Как бот уточняет запрос</h2>
+        </div>
+        <div className="mx-auto flex max-w-3xl flex-col gap-4 rounded-3xl border border-white/10 bg-white/5 p-7 shadow-[0_18px_55px_rgba(0,0,0,0.22)]">
+          {sampleDialogue.map((message, index) => (
+            <div
+              key={`${message.role}-${index}`}
+              className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
+            >
+              <div
+                className={`max-w-[80%] whitespace-pre-wrap rounded-2xl px-5 py-3.5 text-sm leading-relaxed shadow-neon-soft ${
+                  message.role === "user" ? "bg-gradient-cta text-neo-night" : "bg-white/10 text-white"
+                }`}
+              >
+                {message.text}
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="space-y-10">
+        <div className="space-y-2 text-center">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-neo-electric">Помощь инициатору</p>
+          <h2 className="font-display text-3xl font-bold text-white sm:text-4xl">Бот закрывает боль с кодами</h2>
+        </div>
+        <ul className="mx-auto flex max-w-4xl flex-wrap justify-center gap-3">
+          {["1–3 кода за один диалог", "Пояснение к выбору", "Краткие вопросы по делу", "Характеристики для передачи закупщикам"].map(
+            (text) => (
+              <li
+                key={text}
+                className="rounded-full border border-white/15 px-5 py-2.5 text-sm font-medium text-white/80"
+              >
+                {text}
+              </li>
+            )
+          )}
+        </ul>
+      </section>
+
+      <section id="feedback" className="grid gap-12 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
         <div className="space-y-4">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-neo-electric">Связаться</p>
           <h2 className="font-display text-3xl font-bold leading-tight sm:text-4xl lg:text-5xl">
-            Автоматизируем процессы госзакупок в вашей организации
+            Передадим результат закупщикам и поможем внедрить
           </h2>
           <p className="text-lg leading-relaxed text-white/80">
-            Оставьте контакт — свяжемся, обсудим текущий процесс и предложим план внедрения
+            Оставьте контакт — подключим команду, перенастроим процесс и соберём обратную связь по пилоту
           </p>
         </div>
         <FeedbackForm />
