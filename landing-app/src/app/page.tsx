@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ChatWidget, openChat } from "@/components/chat-widget";
+import { ChatWidget, startChatWith } from "@/components/chat-widget";
 import { FeedbackForm } from "@/components/feedback-form";
 import { Header } from "@/components/header";
 import { logEvent } from "@/lib/analytics";
@@ -15,6 +15,25 @@ const steps = [
 ];
 
 const features = ["1–3 кода сразу", "Характеристики в ответе", "Уточняем вопросы по делу"];
+
+const promptIdeas = [
+  {
+    label: "Компьютеры для офиса",
+    query: "Нужны настольные компьютеры для офиса, 15 шт., бюджет 70 000 ₽ за штуку",
+  },
+  {
+    label: "Медицинское оборудование",
+    query: "Подобрать код КТРУ для аппарата ИВЛ для районной больницы",
+  },
+  {
+    label: "Учебные ноутбуки",
+    query: "Ноутбуки для школьного компьютерного класса, 25 шт., диагональ 14-15 дюймов",
+  },
+  {
+    label: "Расходники",
+    query: "Расходные материалы для 3D-принтера FDM, пластик PLA, 20 катушек",
+  },
+];
 
 const sampleDialogue: Array<{ role: "user" | "bot"; text: string }> = [
   { role: "user", text: "Привет!" },
@@ -42,51 +61,48 @@ export default function Home() {
         <div className="absolute left-1/2 top-1/2 h-64 w-64 -translate-x-1/2 -translate-y-1/2 rounded-full bg-neo-sunrise/10 blur-3xl" />
       </div>
 
-      <section className="relative grid gap-20 lg:grid-cols-[1.05fr_0.95fr] lg:items-start">
-        <div className="space-y-12">
-          <div className="space-y-6">
-            <h1 className="font-display text-5xl leading-[1.02] tracking-tight sm:text-6xl lg:text-7xl">
+      <section className="relative grid gap-12 lg:grid-cols-[1fr_minmax(320px,0.85fr)] lg:items-start">
+        <div className="space-y-10">
+          <div className="rounded-3xl border border-white/8 bg-white/5 p-8 shadow-[0_24px_60px_rgba(0,0,0,0.25)] backdrop-blur-xl">
+            <h1 className="font-display text-5xl leading-[1.08] tracking-tight text-white sm:text-6xl lg:text-7xl">
               Коды без боли
             </h1>
-            <p className="max-w-2xl text-xl leading-relaxed text-white/80">
-              Подбираем КТРУ за минуты вместо часов: опишите закупку простыми словами, бот уточнит детали и предложит варианты с характеристиками.
+            <p className="mt-6 max-w-2xl text-lg leading-relaxed text-white/85">
+              Подбираем КТРУ за минуты вместо часов: опишите закупку простыми словами, бот уточнит детали и предложит варианты с характеристиками. Начните с короткой фразы — бот сам задаст уточняющие вопросы.
             </p>
+            <div className="mt-6 grid gap-3 sm:grid-cols-3">
+              {features.map((text) => (
+                <div
+                  key={text}
+                  className="rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-xs font-semibold uppercase tracking-[0.16em] text-white/75"
+                >
+                  {text}
+                </div>
+              ))}
+            </div>
           </div>
-          <div className="flex flex-wrap gap-7">
-            <button
-              type="button"
-              onClick={() => {
-                logEvent("нажал «Попробовать в чате» в первом экране");
-                openChat();
-              }}
-              className="inline-flex items-center justify-center rounded-2xl bg-gradient-cta px-9 py-5 text-lg font-bold text-neo-night shadow-[0_0_40px_rgba(255,95,141,0.45)] transition-all hover:-translate-y-0.5 hover:shadow-[0_0_60px_rgba(255,95,141,0.65)] hover:scale-[1.02]"
-            >
-              Попробовать в чате
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                logEvent("нажал «Оставить заявку» в первом экране", { target: "#feedback" });
-                const el = document.getElementById("feedback");
-                el?.scrollIntoView({ behavior: "smooth" });
-              }}
-              className="inline-flex items-center justify-center rounded-2xl border border-white/15 px-9 py-5 text-lg font-semibold text-white transition-all hover:border-white/35 hover:bg-white/10"
-            >
-              Оставить заявку
-            </button>
+
+          <div className="rounded-3xl border border-white/8 bg-white/5 p-6 shadow-[0_20px_60px_rgба(0,0,0,0.22)] backdrop-blur-xl">
+            <p className="text-sm font-semibold text-white/80">Попробуйте готовые подсказки</p>
+            <p className="mt-2 text-xs text-white/60">Кликните — и чат отправит черновик запроса, вы продолжите диалог.</p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              {promptIdeas.map((idea) => (
+                <button
+                  key={idea.label}
+                  type="button"
+                  onClick={() => {
+                    logEvent("клик быстрый запрос", { label: idea.label });
+                    startChatWith(idea.query);
+                  }}
+                  className="rounded-full border border-white/10 bg-transparent px-4 py-2 text-xs text-white/75 transition hover:border-white/35 hover:bg-white/10 hover:text-white"
+                >
+                  {idea.label}
+                </button>
+              ))}
+            </div>
           </div>
-          <ul className="flex flex-wrap gap-4">
-            {features.map((text) => (
-              <li
-                key={text}
-                className="rounded-full border border-white/15 px-6 py-2.5 text-sm font-semibold uppercase tracking-[0.18em] text-white/75"
-              >
-                {text}
-              </li>
-            ))}
-          </ul>
         </div>
-        <div className="relative overflow-hidden rounded-4xl border border-white/15 bg-gradient-to-br from-white/10 via-white/5 to-transparent p-8 shadow-[0_35px_80px_rgba(0,231,255,0.16)] backdrop-blur-2xl">
+        <div className="relative overflow-hidden rounded-3xl border border-white/8 bg-gradient-to-br from-white/8 via-white/5 to-transparent p-6 shadow-[0_20px_60px_rgба(0,0,0,0.28)] backdrop-blur-2xl">
           <ChatWidget mode="inline" defaultOpen hideFloatingButton />
         </div>
       </section>
