@@ -12,7 +12,7 @@ services:
       - key: LOGS_ROOT
         value: /data/logs
       - key: N8N_WEBHOOK_URL
-        sync: false
+        value: https://n8n.persis.ru/webhook/214d4a37-ae45-4f40-882d-54955ce7ba0a
       - key: N8N_SECRET
         sync: false
       - key: CHAT_TIMEOUT_MS
