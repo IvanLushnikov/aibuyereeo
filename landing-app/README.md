@@ -58,6 +58,7 @@ cp .env.example .env.local
 - `RATE_LIMIT_WINDOW_SEC` — окно для rate limiting в секундах (по умолчанию: 3600)
 - `RATE_LIMIT_MAX_REQUESTS` — максимальное количество запросов в окне (по умолчанию: 20)
 - `FEEDBACK_WEBHOOK_URL` — prod-вебхук n8n для заявок с формы обратной связи
+- `CHAT_ALERT_WEBHOOK_URL` — webhook (например, n8n/Telegram), куда отправляются мгновенные алерты о сбоях чата
 
 ## Структура проекта
 

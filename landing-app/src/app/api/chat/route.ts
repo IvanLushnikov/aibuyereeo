@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { appendChatLog } from "@/lib/log-service";
+import { sendChatAlert } from "@/lib/alert-service";
 import { LRUCache } from "@/lib/lru-cache";
 import { N8NClient } from "@/lib/n8n-client";
 import { z } from "zod";
@@ -58,6 +59,8 @@ function isRateLimited(clientId: string) {
 
 export async function POST(request: Request) {
   const receivedAt = new Date();
+  let clientId: string | undefined;
+  let meta: Record<string, unknown> | undefined;
 
   try {
     let body;
@@ -79,7 +82,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const clientId = String(body?.clientId ?? "").trim();
+    clientId = String(body?.clientId ?? "").trim();
     // Санитизация сообщения - удаляем потенциально опасные символы
     let message = String(body?.message ?? "").trim();
     // Ограничиваем длину и удаляем управляющие символы
@@ -92,7 +95,7 @@ export async function POST(request: Request) {
             content: String(item.content).slice(0, 4000),
           }))
       : [];
-    const meta = typeof body?.meta === "object" && body?.meta ? body.meta : undefined;
+    meta = typeof body?.meta === "object" && body?.meta ? (body.meta as Record<string, unknown>) : undefined;
     const isInitial = meta?.isInitial === true;
 
     if (!clientId || clientId.length === 0) {
@@ -230,6 +233,12 @@ export async function POST(request: Request) {
 
     if (!webhookUrl) {
       console.error("[API] N8N_WEBHOOK_URL не настроен");
+      await sendChatAlert({
+        title: "Chat alert: отсутствует N8N_WEBHOOK_URL",
+        message: "Переменная окружения N8N_WEBHOOK_URL не настроена",
+        clientId,
+        context: { source: meta?.source, isInitial },
+      });
       await appendChatLog({
         timestamp: new Date().toISOString(),
         clientId,
@@ -253,6 +262,12 @@ export async function POST(request: Request) {
       new URL(webhookUrl);
     } catch {
       console.error("[API] Некорректный N8N_WEBHOOK_URL:", webhookUrl);
+      await sendChatAlert({
+        title: "Chat alert: некорректный webhook",
+        message: `Значение N8N_WEBHOOK_URL некорректно: ${webhookUrl}`,
+        clientId,
+        context: { source: meta?.source, isInitial },
+      });
       await appendChatLog({
         timestamp: new Date().toISOString(),
         clientId,
@@ -298,6 +313,12 @@ export async function POST(request: Request) {
       });
     } catch (validationError) {
       console.error("[API] Ошибка валидации payload:", validationError);
+      await sendChatAlert({
+        title: "Chat alert: ошибка валидации payload",
+        message: validationError instanceof Error ? validationError.message : String(validationError),
+        clientId,
+        context: { source: meta?.source, isInitial },
+      });
       await appendChatLog({
         timestamp: new Date().toISOString(),
         clientId,
@@ -339,6 +360,17 @@ export async function POST(request: Request) {
     const circuitBreakerState = n8nClient.getCircuitBreakerState();
     if (circuitBreakerState === 'open') {
       console.warn(`[API] Circuit breaker открыт для ${clientId}. Пропускаем запрос к n8n.`);
+      await sendChatAlert({
+        title: "Chat alert: circuit breaker открыт",
+        message: "Запрос к n8n не отправлен (circuit breaker open)",
+        clientId,
+        requestId,
+        context: {
+          source: meta?.source,
+          isInitial,
+          circuitBreakerState,
+        },
+      });
       await appendChatLog({
         timestamp: new Date().toISOString(),
         clientId,
@@ -394,6 +426,18 @@ export async function POST(request: Request) {
       });
 
       status = "error";
+
+      await sendChatAlert({
+        title: "Chat alert: ошибка n8n webhook",
+        message: n8nError,
+        clientId,
+        requestId,
+        context: {
+          source: meta?.source,
+          isInitial,
+          circuitBreakerState: n8nClient.getCircuitBreakerState(),
+        },
+      });
 
       // Формируем понятное сообщение об ошибке
       // Для инициализации показываем более дружелюбное сообщение
@@ -466,6 +510,12 @@ export async function POST(request: Request) {
     );
   } catch (error) {
     console.error("chat endpoint error", error);
+    await sendChatAlert({
+      title: "Chat alert: исключение в /api/chat",
+      message: error instanceof Error ? error.message : String(error),
+      clientId,
+      context: { source: meta?.source },
+    });
     return NextResponse.json(
       { error: "invalid request" },
       { status: 400 }
