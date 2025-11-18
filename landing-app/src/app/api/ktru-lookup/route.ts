@@ -50,6 +50,10 @@ type TransformedItem = {
   };
 };
 
+type ItemWithPlain = TransformedItem & {
+  plain: string;
+};
+
 const FIELD_SEPARATOR = "   ";
 
 function buildQuery(productName: string) {
@@ -93,7 +97,7 @@ function normalizeCharacteristic(characteristic: KtruCharacteristic) {
   };
 }
 
-function transformItems(items: KtruItem[]) {
+function transformItems(items: KtruItem[]): ItemWithPlain[] {
   return items
     .filter((item) => item?.актуален && item?.являетсяШаблоном !== true)
     .map((item) => {
@@ -129,48 +133,34 @@ function transformItems(items: KtruItem[]) {
 }
 
 function formatPlain(item: TransformedItem) {
-  const tokens: string[] = [];
+  const sections: string[] = [];
 
-  const pushToken = (value?: string | null) => {
-    if (!value) return;
-    const normalized = value.replace(/\s+/g, " ").trim();
-    if (normalized) {
-      tokens.push(normalized);
-    }
-  };
-
-  pushToken("code");
-  pushToken(item.code);
-  pushToken("name");
-  pushToken(item.name);
+  const headerParts = [item.code, item.name];
   if (item.okpdName) {
-    pushToken("okpdName");
-    pushToken(item.okpdName);
+    headerParts.push(item.okpdName);
   }
+  sections.push(headerParts.join(FIELD_SEPARATOR));
 
-  const addGroup = (label: string, list: NormalizedCharacteristic[]) => {
-    if (!list.length) return;
-    pushToken(label);
-
-    for (const characteristic of list) {
-      pushToken("title");
-      pushToken(characteristic.title);
-      if (characteristic.values.length) {
-        pushToken("values");
-        for (const value of characteristic.values) {
-          pushToken(value);
-        }
-      }
-    }
+  const formatGroup = (label: string, list: NormalizedCharacteristic[]) => {
+    if (!list.length) return null;
+    const entries = list.map((characteristic) => {
+      const values = characteristic.values.join(", ");
+      return `${characteristic.title} = ${values}`;
+    });
+    return `${label}: ${entries.join(" | ")}`;
   };
 
-  if (item.characteristics.required.length || item.characteristics.optional.length) {
-    pushToken("characteristics");
-    addGroup("required", item.characteristics.required);
-    addGroup("optional", item.characteristics.optional);
+  const requiredGroup = formatGroup("обязательные", item.characteristics.required);
+  if (requiredGroup) {
+    sections.push(requiredGroup);
   }
 
-  return tokens.join(FIELD_SEPARATOR);
+  const optionalGroup = formatGroup("необязательные", item.characteristics.optional);
+  if (optionalGroup) {
+    sections.push(optionalGroup);
+  }
+
+  return sections.join(" || ");
 }
 
 export async function POST(request: Request) {
@@ -178,6 +168,7 @@ export async function POST(request: Request) {
     const payload = (await request.json().catch(() => ({}))) as {
       productName?: unknown;
       query?: unknown;
+      shape?: unknown;
     };
 
     const rawName =
@@ -194,6 +185,11 @@ export async function POST(request: Request) {
         { status: 400 },
       );
     }
+
+    const url = new URL(request.url);
+    const shapeParam = url.searchParams.get("shape");
+    const bodyShape = typeof payload.shape === "string" ? payload.shape : undefined;
+    const shape = (bodyShape ?? shapeParam ?? "").toLowerCase();
 
     const response = await fetch(buildQuery(productName), {
       headers: { Accept: "application/json" },
@@ -215,6 +211,10 @@ export async function POST(request: Request) {
     const data = (await response.json()) as unknown;
     const items = Array.isArray(data) ? (data as KtruItem[]) : [];
     const transformed = transformItems(items);
+
+    if (shape === "plain") {
+      return NextResponse.json({ items: transformed.map((item) => item.plain) });
+    }
 
     return NextResponse.json({ items: transformed });
   } catch (error) {
