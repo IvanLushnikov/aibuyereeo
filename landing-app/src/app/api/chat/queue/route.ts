@@ -16,7 +16,7 @@ type QueueItem = {
 // Используем Map для предотвращения утечек памяти и более эффективной работы
 const messageQueue = new Map<string, QueueItem>();
 const MAX_QUEUE_SIZE = 1000;
-const PROCESSING_TIMEOUT = 60000; // 60 секунд
+const PROCESSING_TIMEOUT = 180000; // 180 секунд
 const MAX_RETRIES = 3; // Максимум 3 попытки обработки
 
 // Очистка старых и зависших задач

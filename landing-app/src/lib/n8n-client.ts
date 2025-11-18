@@ -30,7 +30,7 @@ class CircuitBreaker {
   private state: CircuitBreakerState = 'closed';
   
   private readonly FAILURE_THRESHOLD = 5;
-  private readonly TIMEOUT = 60000; // 1 минута
+  private readonly TIMEOUT = 120000; // 2 минуты ожидания перед half-open
   
   async execute<T>(fn: () => Promise<T>): Promise<T> {
     if (this.state === 'open') {
@@ -81,10 +81,12 @@ export class N8NClient {
   private readonly RETRY_DELAY = 1000; // 1 секунда
   private readonly MAX_PAYLOAD_SIZE = 50 * 1024; // 50KB
 
-  constructor(webhookUrl: string, secret?: string, timeoutMs: number = 25000) {
+  private static readonly MAX_REQUEST_TIMEOUT_MS = 180000; // 3 минуты
+
+  constructor(webhookUrl: string, secret?: string, timeoutMs: number = 120000) {
     this.webhookUrl = webhookUrl;
     this.secret = secret;
-    this.timeoutMs = Math.max(5000, Math.min(60000, timeoutMs)); // Валидация timeout
+    this.timeoutMs = Math.max(5000, Math.min(N8NClient.MAX_REQUEST_TIMEOUT_MS, timeoutMs)); // Валидация timeout
     
     // Используем глобальный circuit breaker (singleton) для всех запросов
     if (!globalCircuitBreaker) {
