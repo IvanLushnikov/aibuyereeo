@@ -61,10 +61,13 @@ function formatValue(value?: KtruValue | null) {
   return null;
 }
 
+const MAX_VALUES = 4;
+
 function normalizeCharacteristic(characteristic: KtruCharacteristic) {
   const values = (characteristic.значения ?? [])
     .map((value) => formatValue(value))
-    .filter((value): value is string => Boolean(value));
+    .filter((value): value is string => Boolean(value))
+    .slice(0, MAX_VALUES);
 
   if (!values.length) {
     return null;
@@ -72,9 +75,7 @@ function normalizeCharacteristic(characteristic: KtruCharacteristic) {
 
   return {
     title: characteristic.наименование,
-    type: characteristic.тип === 1 ? "количественная" : "качественная",
     values,
-    isRequired: characteristic.обязательнаКПрименению === true,
   };
 }
 
@@ -82,30 +83,26 @@ function transformItems(items: KtruItem[]) {
   return items
     .filter((item) => item?.актуален && item?.являетсяШаблоном !== true)
     .map((item) => {
-      const required: Array<{ title: string; type: string; values: string[] }> = [];
-      const optional: Array<{ title: string; type: string; values: string[] }> = [];
+      const required: Array<{ title: string; values: string[] }> = [];
 
       for (const characteristic of item.характеристики ?? []) {
+        if (!characteristic.обязательнаКПрименению) {
+          continue;
+        }
+
         const normalized = normalizeCharacteristic(characteristic);
         if (!normalized) continue;
 
-        if (normalized.isRequired) {
-          required.push(normalized);
-        } else {
-          optional.push(normalized);
-        }
+        required.push(normalized);
       }
 
       return {
         code: item.код,
         name: item.наименование,
         okpdName: item.наименованиеОКПД ?? null,
-        link: `https://zakupki44fz.ru/app/okpd2/${item.код}`,
         characteristics: {
           required,
-          optional,
         },
-        standards: (item.стандарты ?? []).map((standard) => standard.названиеДокумента),
       };
     });
 }
