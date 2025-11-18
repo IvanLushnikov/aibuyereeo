@@ -134,11 +134,13 @@ export async function GET() {
     urlError,
     webhookUrl: webhookUrl ? webhookUrl.replace(/\/[^\/]*$/, '/***') : null,
     env: {
-      CHAT_TIMEOUT_MS: process.env.CHAT_TIMEOUT_MS || "25000 (default)",
+      CHAT_TIMEOUT_MS: process.env.CHAT_TIMEOUT_MS || "120000 (default)",
       RATE_LIMIT_WINDOW_SEC: process.env.RATE_LIMIT_WINDOW_SEC || "3600 (default)",
       RATE_LIMIT_MAX_REQUESTS: process.env.RATE_LIMIT_MAX_REQUESTS || "20 (default)",
     },
   });
 }
+
+
 
 

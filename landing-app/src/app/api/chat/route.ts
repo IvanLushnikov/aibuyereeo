@@ -273,7 +273,7 @@ export async function POST(request: Request) {
 
     const startedAt = Date.now();
     // Таймаут 1.5 минуты (90 секунд) для всех запросов
-    const timeoutMs = Number(process.env.CHAT_TIMEOUT_MS ?? 90000);
+    const timeoutMs = Number(process.env.CHAT_TIMEOUT_MS ?? 120000);
 
     // Валидация payload перед отправкой в n8n
     const n8nPayloadSchema = z.object({
