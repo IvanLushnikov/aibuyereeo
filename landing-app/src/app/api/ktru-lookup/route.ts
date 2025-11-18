@@ -25,6 +25,11 @@ type KtruStandard = {
   названиеДокумента: string;
 };
 
+type NormalizedCharacteristic = {
+  title: string;
+  values: string[];
+};
+
 type KtruItem = {
   код: string;
   наименование: string;
@@ -34,6 +39,18 @@ type KtruItem = {
   актуален?: boolean;
   являетсяШаблоном?: boolean;
 };
+
+type TransformedItem = {
+  code: string;
+  name: string;
+  okpdName: string | null;
+  characteristics: {
+    required: NormalizedCharacteristic[];
+    optional: NormalizedCharacteristic[];
+  };
+};
+
+const FIELD_SEPARATOR = "   ";
 
 function buildQuery(productName: string) {
   const params = new URLSearchParams({ ProductName: productName, ...DEFAULT_PARAMS });
@@ -94,7 +111,7 @@ function transformItems(items: KtruItem[]) {
         }
       }
 
-      return {
+      const transformedItem: TransformedItem = {
         code: item.код,
         name: item.наименование,
         okpdName: item.наименованиеОКПД ?? null,
@@ -103,7 +120,57 @@ function transformItems(items: KtruItem[]) {
           optional,
         },
       };
+
+      return {
+        ...transformedItem,
+        plain: formatPlain(transformedItem),
+      };
     });
+}
+
+function formatPlain(item: TransformedItem) {
+  const tokens: string[] = [];
+
+  const pushToken = (value?: string | null) => {
+    if (!value) return;
+    const normalized = value.replace(/\s+/g, " ").trim();
+    if (normalized) {
+      tokens.push(normalized);
+    }
+  };
+
+  pushToken("code");
+  pushToken(item.code);
+  pushToken("name");
+  pushToken(item.name);
+  if (item.okpdName) {
+    pushToken("okpdName");
+    pushToken(item.okpdName);
+  }
+
+  const addGroup = (label: string, list: NormalizedCharacteristic[]) => {
+    if (!list.length) return;
+    pushToken(label);
+
+    for (const characteristic of list) {
+      pushToken("title");
+      pushToken(characteristic.title);
+      if (characteristic.values.length) {
+        pushToken("values");
+        for (const value of characteristic.values) {
+          pushToken(value);
+        }
+      }
+    }
+  };
+
+  if (item.characteristics.required.length || item.characteristics.optional.length) {
+    pushToken("characteristics");
+    addGroup("required", item.characteristics.required);
+    addGroup("optional", item.characteristics.optional);
+  }
+
+  return tokens.join(FIELD_SEPARATOR);
 }
 
 export async function POST(request: Request) {
