@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 const KTRU_API_URL = "http://ktru.services.persis.ru/api/Ktru/GetKtru";
 const DEFAULT_PARAMS = {
   IncludeChars: "true",
-  Limit: "15",
+  Limit: "10",
   Page: "1",
   WithActualKtrusOnly: "true",
 };
@@ -127,12 +127,15 @@ function transformItems(items: KtruItem[]): ItemWithPlain[] {
 
       return {
         ...transformedItem,
-        plain: formatPlain(transformedItem),
+        plain: formatPlain(transformedItem, { includeOptional: false }),
       };
     });
 }
 
-function formatPlain(item: TransformedItem) {
+function formatPlain(
+  item: TransformedItem,
+  options: { includeOptional?: boolean } = {},
+) {
   const sections: string[] = [];
 
   const headerParts = [item.code, item.name];
@@ -155,9 +158,11 @@ function formatPlain(item: TransformedItem) {
     sections.push(requiredGroup);
   }
 
-  const optionalGroup = formatGroup("необязательные", item.characteristics.optional);
-  if (optionalGroup) {
-    sections.push(optionalGroup);
+  if (options.includeOptional) {
+    const optionalGroup = formatGroup("необязательные", item.characteristics.optional);
+    if (optionalGroup) {
+      sections.push(optionalGroup);
+    }
   }
 
   return sections.join(" || ");
