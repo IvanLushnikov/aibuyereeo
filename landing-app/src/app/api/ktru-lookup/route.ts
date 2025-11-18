@@ -61,13 +61,10 @@ function formatValue(value?: KtruValue | null) {
   return null;
 }
 
-const MAX_VALUES = 4;
-
 function normalizeCharacteristic(characteristic: KtruCharacteristic) {
   const values = (characteristic.значения ?? [])
     .map((value) => formatValue(value))
-    .filter((value): value is string => Boolean(value))
-    .slice(0, MAX_VALUES);
+    .filter((value): value is string => Boolean(value));
 
   if (!values.length) {
     return null;
@@ -84,16 +81,17 @@ function transformItems(items: KtruItem[]) {
     .filter((item) => item?.актуален && item?.являетсяШаблоном !== true)
     .map((item) => {
       const required: Array<{ title: string; values: string[] }> = [];
+      const optional: Array<{ title: string; values: string[] }> = [];
 
       for (const characteristic of item.характеристики ?? []) {
-        if (!characteristic.обязательнаКПрименению) {
-          continue;
-        }
-
         const normalized = normalizeCharacteristic(characteristic);
         if (!normalized) continue;
 
-        required.push(normalized);
+        if (characteristic.обязательнаКПрименению) {
+          required.push(normalized);
+        } else {
+          optional.push(normalized);
+        }
       }
 
       return {
@@ -102,6 +100,7 @@ function transformItems(items: KtruItem[]) {
         okpdName: item.наименованиеОКПД ?? null,
         characteristics: {
           required,
+          optional,
         },
       };
     });
