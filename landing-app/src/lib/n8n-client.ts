@@ -81,7 +81,7 @@ export class N8NClient {
   private readonly RETRY_DELAY = 1000; // 1 секунда
   private readonly MAX_PAYLOAD_SIZE = 50 * 1024; // 50KB
 
-  private static readonly MAX_REQUEST_TIMEOUT_MS = 180000; // 3 минуты (но прокси обрывает через 60 сек)
+  private static readonly MAX_REQUEST_TIMEOUT_MS = 300000; // 5 минут (соответствует CHAT_TIMEOUT_MS)
 
   constructor(webhookUrl: string, secret?: string, timeoutMs: number = 120000) {
     this.webhookUrl = webhookUrl;
@@ -359,6 +359,12 @@ export class N8NClient {
       // Проверяем состояние circuit breaker
       if (this.circuitBreaker.getState() === 'open') {
         throw new Error("n8n временно недоступен (circuit breaker открыт)");
+      }
+
+      // Улучшенная обработка ошибки таймаута
+      if (errorMessage.includes("aborted") || errorMessage.includes("This operation was aborted")) {
+        const timeoutSeconds = Math.round(this.timeoutMs / 1000);
+        throw new Error(`Запрос к n8n превысил таймаут (${timeoutSeconds} сек). n8n обрабатывает запрос слишком долго.`);
       }
 
       throw error;

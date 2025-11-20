@@ -430,17 +430,22 @@ export async function POST(request: Request) {
 
       status = "error";
 
-      await sendChatAlert({
-        title: "Chat alert: ошибка n8n webhook",
-        message: n8nError,
-        clientId,
-        requestId,
-        context: {
-          source: meta?.source,
-          isInitial,
-          circuitBreakerState: n8nClient.getCircuitBreakerState(),
-        },
-      });
+      // Обертываем sendChatAlert в try/catch, чтобы не падать при ошибке алерта
+      try {
+        await sendChatAlert({
+          title: "Chat alert: ошибка n8n webhook",
+          message: n8nError,
+          clientId,
+          requestId,
+          context: {
+            source: meta?.source,
+            isInitial,
+            circuitBreakerState: n8nClient.getCircuitBreakerState(),
+          },
+        });
+      } catch (alertError) {
+        console.error("[API] Ошибка отправки алерта (не критично):", alertError);
+      }
 
       // Формируем понятное сообщение об ошибке
       // Для инициализации показываем более дружелюбное сообщение
@@ -448,7 +453,7 @@ export async function POST(request: Request) {
         replyText = isInitial 
           ? "ИИ‑бот временно недоступен. Попробуйте открыть чат через минуту."
           : "ИИ‑бот временно недоступен. Попробуйте позже.";
-      } else if (n8nError.includes("timeout") || n8nError.includes("AbortError")) {
+      } else if (n8nError.includes("timeout") || n8nError.includes("AbortError") || n8nError.includes("aborted") || n8nError.includes("превысил таймаут")) {
         replyText = isInitial
           ? "ИИ‑бот не отвечает. Попробуйте открыть чат через минуту."
           : "ИИ‑бот слишком долго думает. Попробуйте ещё раз или переформулируйте вопрос.";
@@ -513,11 +518,14 @@ export async function POST(request: Request) {
     );
   } catch (error) {
     console.error("chat endpoint error", error);
-    await sendChatAlert({
+    // Не блокируем ответ при ошибке отправки алерта
+    sendChatAlert({
       title: "Chat alert: исключение в /api/chat",
       message: error instanceof Error ? error.message : String(error),
       clientId,
       context: { source: meta?.source },
+    }).catch((alertError) => {
+      console.error("[API] Failed to send alert:", alertError);
     });
     return NextResponse.json(
       { error: "invalid request" },
