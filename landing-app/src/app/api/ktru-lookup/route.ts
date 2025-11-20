@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 const KTRU_API_URL = "http://ktru.services.persis.ru/api/Ktru/GetKtru";
 const DEFAULT_PARAMS = {
   IncludeChars: "true",
-  Limit: "15", // Вернули 15, но будем сильно сжимать ответ
+  Limit: "20", // Увеличили до 20 по просьбе пользователя
   Page: "1",
   WithActualKtrusOnly: "true",
 };
