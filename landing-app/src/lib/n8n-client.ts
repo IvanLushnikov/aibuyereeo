@@ -168,7 +168,7 @@ export class N8NClient {
           webhookUrl: this.webhookUrl.includes('persis.ru') ? 'n8n.persis.ru (через прокси)' : 'прямой URL',
         });
 
-        // 504 Gateway Timeout - прокси обрывает соединение через ~60 сек, но n8n продолжает обрабатывать запрос
+        // 504 Gateway Timeout - n8n продолжает обрабатывать запрос
         // Делаем ОДИН retry после задержки, чтобы дождаться ответа от n8n
         if (response.status === 504) {
           if (attempt === 0) {
@@ -183,7 +183,7 @@ export class N8NClient {
               return response;
             }
             
-            console.warn(`[N8NClient] 504 Gateway Timeout - прокси обрывает соединение, но n8n обрабатывает запрос. Retry через ${delay/1000}с (прошло ${Math.round(elapsed/1000)}с)`);
+            console.warn(`[N8NClient] 504 Gateway Timeout - n8n обрабатывает запрос. Retry через ${delay/1000}с (прошло ${Math.round(elapsed/1000)}с)`);
             await new Promise(resolve => setTimeout(resolve, delay));
             continue; // Делаем retry
           } else {
@@ -269,7 +269,7 @@ export class N8NClient {
         } else if (response.status === 504) {
           // Логируем тело ответа для диагностики
           console.error(`[N8NClient] 504 Gateway Timeout. Тело ответа:`, errorBody.slice(0, 500));
-          errorMessage = `504: Gateway Timeout. Прокси обрывает соединение, пока n8n обрабатывает запрос. ${errorMessage}`;
+          errorMessage = `504: Gateway Timeout. n8n обрабатывает запрос. ${errorMessage}`;
         }
 
         console.error(`[N8NClient] Ошибка от n8n (статус ${response.status}):`, {
