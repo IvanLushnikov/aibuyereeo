@@ -168,25 +168,22 @@ export class N8NClient {
           webhookUrl: this.webhookUrl.includes('persis.ru') ? 'n8n.persis.ru (через прокси)' : 'прямой URL',
         });
 
-        // 504 Gateway Timeout - n8n продолжает обрабатывать запрос, делаем retry
+        // 504 Gateway Timeout - n8n продолжает обрабатывать запрос, делаем retry до таймаута 10 минут
         if (response.status === 504) {
-          if (attempt < this.MAX_RETRIES) {
-            const elapsed = Date.now() - fetchStartTime;
-            const delay = 60000; // Задержка перед retry
-            const remaining = this.timeoutMs - elapsed - delay;
-            
-            if (remaining < 10000) {
-              console.error(`[N8NClient] 504 Gateway Timeout - недостаточно времени для retry (осталось ${remaining}ms)`);
-              return response;
-            }
-            
-            console.warn(`[N8NClient] 504 Gateway Timeout - n8n обрабатывает запрос. Retry через ${delay/1000}с (прошло ${Math.round(elapsed/1000)}с)`);
-            await new Promise(resolve => setTimeout(resolve, delay));
-            continue; // Делаем retry
-          } else {
-            console.error(`[N8NClient] 504 Gateway Timeout - все попытки исчерпаны. n8n может еще обрабатывать запрос.`);
+          const elapsed = Date.now() - fetchStartTime;
+          const remaining = this.timeoutMs - elapsed;
+          
+          if (remaining < 10000) {
+            // Если осталось меньше 10 секунд до таймаута, возвращаем ошибку
+            console.error(`[N8NClient] 504 Gateway Timeout - таймаут истек (осталось ${remaining}ms)`);
             return response;
           }
+          
+          // Задержка перед retry - минимум 30 секунд, но не больше чем осталось времени
+          const delay = Math.min(30000, remaining - 10000);
+          console.warn(`[N8NClient] 504 Gateway Timeout - n8n обрабатывает запрос. Retry через ${delay/1000}с (прошло ${Math.round(elapsed/1000)}с, осталось ${Math.round(remaining/1000)}с)`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue; // Делаем retry
         }
 
         // Для остальных 5xx ошибок делаем retry (кроме последней попытки)
