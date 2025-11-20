@@ -145,33 +145,47 @@ export const FeedbackForm = ({ abExperimentId, abPlacement, abVariant }: Feedbac
       lastSubmitTime = now;
       const clientId = ensureClientId();
       
-      // Финальная проверка перед отправкой
-      if (!name || !email || !role) {
-        console.error("[FeedbackForm] CRITICAL: Attempted to submit with empty required fields", {
-          name: !!name,
-          email: !!email,
-          role: !!role,
+      // АБСОЛЮТНАЯ ФИНАЛЬНАЯ ПРОВЕРКА перед отправкой
+      const finalNameCheck = name.trim();
+      const finalEmailCheck = email.trim();
+      const finalRoleCheck = role.trim();
+
+      if (finalNameCheck.length === 0 || 
+          finalEmailCheck.length === 0 || 
+          !isValidEmail(finalEmailCheck) ||
+          finalRoleCheck.length === 0) {
+        console.error("[FeedbackForm] CRITICAL: Attempted to submit with empty/invalid required fields", {
+          nameLength: finalNameCheck.length,
+          emailLength: finalEmailCheck.length,
+          roleLength: finalRoleCheck.length,
+          nameValue: name,
+          emailValue: email,
+          roleValue: role,
         });
-        setError("Ошибка: не все обязательные поля заполнены. Пожалуйста, проверьте форму.");
+        setError("Ошибка: не все обязательные поля заполнены корректно. Пожалуйста, проверьте форму.");
+        setState("idle");
         return;
       }
 
       const payloadToSend = {
-        name,
-        email,
-        phone: phone || undefined,
-        role,
-        comment: comment || undefined,
+        name: finalNameCheck,
+        email: finalEmailCheck,
+        phone: phone?.trim() || undefined,
+        role: finalRoleCheck,
+        comment: comment?.trim() || undefined,
         clientId,
         sessionId,
       };
 
-      console.log("[FeedbackForm] Sending payload:", {
+      console.log("[FeedbackForm] Sending validated payload:", {
         name: payloadToSend.name,
         email: payloadToSend.email,
         role: payloadToSend.role,
         hasPhone: !!payloadToSend.phone,
         hasComment: !!payloadToSend.comment,
+        nameLength: payloadToSend.name.length,
+        emailLength: payloadToSend.email.length,
+        roleLength: payloadToSend.role.length,
       });
 
       const response = await fetch("/api/feedback", {

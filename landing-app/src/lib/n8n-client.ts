@@ -81,7 +81,7 @@ export class N8NClient {
   private readonly RETRY_DELAY = 1000; // 1 секунда
   private readonly MAX_PAYLOAD_SIZE = 50 * 1024; // 50KB
 
-  private static readonly MAX_REQUEST_TIMEOUT_MS = 180000; // 3 минуты
+  private static readonly MAX_REQUEST_TIMEOUT_MS = 180000; // 3 минуты (но прокси обрывает через 60 сек)
 
   constructor(webhookUrl: string, secret?: string, timeoutMs: number = 120000) {
     this.webhookUrl = webhookUrl;
