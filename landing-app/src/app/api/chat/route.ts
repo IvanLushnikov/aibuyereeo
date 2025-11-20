@@ -344,11 +344,14 @@ export async function POST(request: Request) {
       requestId,
     };
 
+    const payloadSize = JSON.stringify(n8nPayload).length;
     console.log(`[API] Отправка запроса в n8n для ${clientId}:`, {
       requestId,
       webhookUrl: webhookUrl.replace(/\/[^\/]*$/, '/***'),
       messageLength: message.length,
       historyLength: history.length,
+      payloadSizeBytes: payloadSize,
+      payloadSizeKB: (payloadSize / 1024).toFixed(2),
       isInitial,
       hasSecret: !!secret,
     });

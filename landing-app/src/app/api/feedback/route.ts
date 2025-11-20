@@ -14,30 +14,58 @@ type FeedbackPayload = {
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const REQUEST_TIMEOUT_MS = Number(process.env.FEEDBACK_TIMEOUT_MS ?? 15000);
 
-function sanitizeText(value: unknown, maxLength: number) {
-  if (typeof value !== "string") {
+function sanitizeText(value: unknown, maxLength: number): string {
+  // Строгая проверка: если не строка или null/undefined, возвращаем пустую строку
+  if (value === null || value === undefined) {
     return "";
   }
-  return value.trim().slice(0, maxLength);
+  if (typeof value !== "string") {
+    // Пытаемся преобразовать в строку, но если это объект/массив - возвращаем пустую строку
+    if (typeof value === "object") {
+      return "";
+    }
+    return String(value).trim().slice(0, maxLength);
+  }
+  // Убираем все пробелы и проверяем, что осталось не пусто
+  const trimmed = value.trim();
+  return trimmed.slice(0, maxLength);
 }
 
 function validatePayload(data: Partial<FeedbackPayload>) {
   const errors: string[] = [];
 
+  // Строгая валидация: проверяем тип и наличие значений ДО санитизации
+  const rawName = data.name;
+  const rawEmail = data.email;
+  const rawRole = data.role;
+
+  // Проверяем, что обязательные поля присутствуют и не null/undefined
+  if (rawName === null || rawName === undefined || (typeof rawName === "string" && rawName.trim().length === 0)) {
+    errors.push("name is required and cannot be empty");
+  }
+  if (rawEmail === null || rawEmail === undefined || (typeof rawEmail === "string" && rawEmail.trim().length === 0)) {
+    errors.push("email is required and cannot be empty");
+  }
+  if (rawRole === null || rawRole === undefined || (typeof rawRole === "string" && rawRole.trim().length === 0)) {
+    errors.push("role is required and cannot be empty");
+  }
+
+  // Санитизируем только если нет ошибок
   const name = sanitizeText(data.name, 200);
   const email = sanitizeText(data.email, 320);
   const phone = sanitizeText(data.phone ?? "", 32);
   const role = sanitizeText(data.role, 200);
   const comment = sanitizeText(data.comment ?? "", 2000);
 
-  if (!name) {
-    errors.push("name is required");
+  // Дополнительная проверка после санитизации
+  if (name && name.trim().length === 0) {
+    errors.push("name cannot be only whitespace");
   }
-  if (!email || !EMAIL_REGEX.test(email)) {
+  if (email && (email.trim().length === 0 || !EMAIL_REGEX.test(email))) {
     errors.push("email is invalid");
   }
-  if (!role) {
-    errors.push("role is required");
+  if (role && role.trim().length === 0) {
+    errors.push("role cannot be only whitespace");
   }
 
   return {
@@ -65,15 +93,36 @@ export async function POST(request: Request) {
     );
   }
 
+  // Логируем источник запроса для отладки
+  const clientIp = request.headers.get("x-forwarded-for") || 
+                   request.headers.get("x-real-ip") || 
+                   "unknown";
+  const userAgent = request.headers.get("user-agent") || "unknown";
+  const referer = request.headers.get("referer") || "unknown";
+  
+  console.log("[Feedback] Request received:", {
+    ip: clientIp,
+    userAgent: userAgent.slice(0, 100),
+    referer: referer.slice(0, 200),
+    timestamp: new Date().toISOString(),
+  });
+
   let data: unknown;
   try {
     data = await request.json();
   } catch (error) {
-    console.error("[Feedback] Failed to parse JSON", error);
+    console.error("[Feedback] Failed to parse JSON", error, {
+      ip: clientIp,
+      userAgent: userAgent.slice(0, 100),
+    });
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
   if (!data || typeof data !== "object") {
+    console.error("[Feedback] Invalid body type:", typeof data, {
+      ip: clientIp,
+      userAgent: userAgent.slice(0, 100),
+    });
     return NextResponse.json(
       { error: "Request body must be a JSON object" },
       { status: 400 }
@@ -81,13 +130,22 @@ export async function POST(request: Request) {
   }
 
   // Логируем входящие данные для отладки
+  const rawName = String((data as any).name || "");
+  const rawEmail = String((data as any).email || "");
+  const rawRole = String((data as any).role || "");
+  
   console.log("[Feedback] Received data:", {
-    hasName: !!(data as any).name,
-    hasEmail: !!(data as any).email,
-    hasRole: !!(data as any).role,
-    nameLength: String((data as any).name || "").length,
-    emailLength: String((data as any).email || "").length,
-    roleLength: String((data as any).role || "").length,
+    hasName: !!rawName && rawName.trim().length > 0,
+    hasEmail: !!rawEmail && rawEmail.trim().length > 0,
+    hasRole: !!rawRole && rawRole.trim().length > 0,
+    nameLength: rawName.length,
+    emailLength: rawEmail.length,
+    roleLength: rawRole.length,
+    nameValue: rawName.slice(0, 50),
+    emailValue: rawEmail.slice(0, 50),
+    roleValue: rawRole.slice(0, 50),
+    ip: clientIp,
+    userAgent: userAgent.slice(0, 100),
   });
 
   const { errors, payload } = validatePayload(data as Partial<FeedbackPayload>);
@@ -153,6 +211,7 @@ export async function POST(request: Request) {
 
   const submittedAt = new Date().toISOString();
 
+  // Структура payload для n8n: данные в корне объекта (n8n использует $json.body ?? $json)
   const webhookPayload = {
     type: "feedback_form",
     submittedAt,
@@ -163,14 +222,44 @@ export async function POST(request: Request) {
     comment: payload.comment?.trim() || undefined,
     clientId: payload.clientId,
     sessionId: payload.sessionId,
+    // Дублируем в body для совместимости с n8n (если он ожидает $json.body)
+    body: {
+      name: finalName,
+      email: finalEmail,
+      phone: payload.phone?.trim() || undefined,
+      role: finalRole,
+      comment: payload.comment?.trim() || undefined,
+    },
   };
 
   // Финальная проверка перед отправкой в webhook
   if (!webhookPayload.name || !webhookPayload.email || !webhookPayload.role) {
-    console.error("[Feedback] CRITICAL: Webhook payload has empty required fields", webhookPayload);
+    console.error("[Feedback] CRITICAL: Webhook payload has empty required fields", {
+      webhookPayload,
+      ip: clientIp,
+      userAgent: userAgent.slice(0, 100),
+      referer: referer.slice(0, 200),
+    });
     return NextResponse.json(
       { error: "Cannot send empty data to webhook" },
       { status: 500 }
+    );
+  }
+
+  // Дополнительная проверка: убеждаемся, что значения не состоят только из пробелов или спецсимволов
+  if (webhookPayload.name.trim().length === 0 || 
+      webhookPayload.email.trim().length === 0 || 
+      webhookPayload.role.trim().length === 0) {
+    console.error("[Feedback] CRITICAL: Fields are empty after final trim", {
+      name: webhookPayload.name,
+      email: webhookPayload.email,
+      role: webhookPayload.role,
+      ip: clientIp,
+      userAgent: userAgent.slice(0, 100),
+    });
+    return NextResponse.json(
+      { error: "Required fields cannot be empty" },
+      { status: 400 }
     );
   }
 
@@ -184,6 +273,8 @@ export async function POST(request: Request) {
     nameLength: webhookPayload.name.length,
     emailLength: webhookPayload.email.length,
     roleLength: webhookPayload.role.length,
+    ip: clientIp,
+    userAgent: userAgent.slice(0, 100),
   });
 
   await appendEventLog({
@@ -203,7 +294,56 @@ export async function POST(request: Request) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
+  // АБСОЛЮТНАЯ ФИНАЛЬНАЯ ПРОВЕРКА перед отправкой в webhook
+  // Это последний рубеж защиты от пустых заявок
+  if (!webhookPayload.name || 
+      webhookPayload.name.trim().length === 0 ||
+      !webhookPayload.email || 
+      webhookPayload.email.trim().length === 0 ||
+      !webhookPayload.role || 
+      webhookPayload.role.trim().length === 0) {
+    console.error("[Feedback] BLOCKED: Attempted to send empty data to webhook", {
+      payload: JSON.stringify(webhookPayload),
+      ip: clientIp,
+      userAgent: userAgent.slice(0, 100),
+      referer: referer.slice(0, 200),
+      timestamp: new Date().toISOString(),
+    });
+    return NextResponse.json(
+      { error: "Cannot send empty data to webhook - all required fields must be filled" },
+      { status: 400 }
+    );
+  }
+
   try {
+    // ФИНАЛЬНАЯ ПРОВЕРКА: убеждаемся, что данные действительно не пустые перед отправкой
+    // Это последний рубеж защиты - даже если что-то проскочило выше
+    const finalCheckName = String(webhookPayload.name || "").trim();
+    const finalCheckEmail = String(webhookPayload.email || "").trim();
+    const finalCheckRole = String(webhookPayload.role || "").trim();
+    
+    if (finalCheckName.length === 0 || finalCheckEmail.length === 0 || finalCheckRole.length === 0) {
+      console.error("[Feedback] FINAL BLOCK: Empty data detected right before webhook call", {
+        name: finalCheckName,
+        email: finalCheckEmail,
+        role: finalCheckRole,
+        nameLength: finalCheckName.length,
+        emailLength: finalCheckEmail.length,
+        roleLength: finalCheckRole.length,
+        ip: clientIp,
+        userAgent: userAgent.slice(0, 100),
+        fullPayload: JSON.stringify(webhookPayload),
+      });
+      return NextResponse.json(
+        { error: "Cannot send empty data to webhook - validation failed at final check" },
+        { status: 400 }
+      );
+    }
+    
+    // Логируем полный payload перед отправкой (для отладки)
+    console.log("[Feedback] Final payload being sent to webhook:", JSON.stringify(webhookPayload, null, 2));
+    console.log("[Feedback] Webhook URL:", webhookUrl.replace(/\/[^\/]*$/, '/***')); // Скрываем последнюю часть URL
+    
     const response = await fetch(webhookUrl, {
       method: "POST",
       headers: {

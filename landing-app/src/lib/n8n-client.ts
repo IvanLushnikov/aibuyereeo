@@ -139,6 +139,15 @@ export class N8NClient {
       try {
         const fetchStartTime = Date.now();
         
+        // Логируем полный URL для диагностики (только в dev или при ошибках)
+        if (process.env.NODE_ENV !== 'production' || attempt > 0) {
+          console.log(`[N8NClient] Запрос к webhook (попытка ${attempt + 1}):`, {
+            webhookUrl: this.webhookUrl,
+            payloadSize: JSON.stringify(payload).length,
+            historyLength: payload.history?.length || 0,
+          });
+        }
+        
         const response = await fetch(this.webhookUrl, {
           method: "POST",
           headers: {
@@ -156,6 +165,7 @@ export class N8NClient {
           status: response.status,
           latency: `${fetchTime}ms`,
           requestId: payload.requestId,
+          webhookUrl: this.webhookUrl.includes('persis.ru') ? 'n8n.persis.ru (через прокси)' : 'прямой URL',
         });
 
         // Для 5xx ошибок делаем retry (кроме последней попытки)
