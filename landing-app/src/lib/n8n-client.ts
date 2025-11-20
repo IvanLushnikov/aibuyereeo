@@ -169,12 +169,13 @@ export class N8NClient {
         });
 
         // 504 Gateway Timeout - прокси обрывает соединение, но n8n продолжает обрабатывать запрос
-        // Делаем retry с задержкой, чтобы дать n8n время закончить обработку
+        // Делаем retry с большой задержкой, чтобы дать n8n время закончить обработку
         if (response.status === 504) {
           if (attempt < this.MAX_RETRIES) {
-            // Увеличиваем задержку для 504 - n8n может обрабатывать запрос долго
-            const delay = this.RETRY_DELAY * (attempt + 1) * 2; // Удваиваем задержку для 504
-            console.warn(`[N8NClient] 504 Gateway Timeout - прокси обрывает соединение, но n8n обрабатывает запрос. Retry через ${delay}ms (попытка ${attempt + 1}/${this.MAX_RETRIES})`);
+            // Большая задержка для 504 - n8n может обрабатывать запрос 60-120 секунд
+            // Увеличиваем задержку экспоненциально: 30 сек, 60 сек
+            const delay = 30000 * (attempt + 1); // 30 секунд, 60 секунд
+            console.warn(`[N8NClient] 504 Gateway Timeout - прокси обрывает соединение, но n8n обрабатывает запрос. Retry через ${delay/1000}с (попытка ${attempt + 1}/${this.MAX_RETRIES})`);
             await new Promise(resolve => setTimeout(resolve, delay));
             continue;
           } else {
