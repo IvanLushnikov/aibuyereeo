@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 const KTRU_API_URL = "http://ktru.services.persis.ru/api/Ktru/GetKtru";
 const DEFAULT_PARAMS = {
   IncludeChars: "true",
-  Limit: "20", // Увеличили до 20 по просьбе пользователя
+  Limit: "5", // Уменьшено до 5 для экономии токенов - пагинация по запросу
   Page: "1",
   WithActualKtrusOnly: "true",
 };
@@ -91,8 +91,14 @@ type ItemWithPlain = TransformedItem & {
 const OPTIONAL_KEY_PREFIX = "o";
 const OPTIONAL_CHUNK_SIZE = 5;
 
-function buildQuery(productName: string) {
-  const params = new URLSearchParams({ ProductName: productName, ...DEFAULT_PARAMS });
+function buildQuery(productName: string, page: number = 1, limit: number = 5) {
+  const params = new URLSearchParams({ 
+    ProductName: productName, 
+    IncludeChars: "true",
+    Limit: String(limit),
+    Page: String(page),
+    WithActualKtrusOnly: "true",
+  });
   return `${KTRU_API_URL}?${params.toString()}`;
 }
 
@@ -177,6 +183,35 @@ function transformItems(items: KtruItem[]): ItemWithPlain[] {
     });
 }
 
+// Функция для автоматического сокращения названий характеристик
+function shortenCharacteristicTitle(title: string): string {
+  // Убираем общие префиксы, которые не несут смысла
+  const commonPrefixes = [
+    "Размер ",
+    "Количество ",
+    "Наличие ",
+    "Тип ",
+    "Максимальное количество ",
+    "Количество установленных ",
+  ];
+  
+  let shortened = title;
+  for (const prefix of commonPrefixes) {
+    if (shortened.startsWith(prefix)) {
+      shortened = shortened.substring(prefix.length);
+      break;
+    }
+  }
+  
+  // Убираем длинные пояснения в скобках
+  shortened = shortened.replace(/\s*\([^)]+\)/g, "");
+  
+  // Убираем "по вертикали, градус" -> "по вертикали"
+  shortened = shortened.replace(/, градус/g, "");
+  
+  return shortened.trim();
+}
+
 function formatPlain(
   item: TransformedItem,
   options: { includeOptional?: boolean } = {},
@@ -184,18 +219,12 @@ function formatPlain(
   // ULTRA-LIGHT FORMAT: "CODE | Param1: Val1, Val2 | Param2: Val3"
   const parts: string[] = [item.code];
 
-  // Добавляем имя, но обрезаем если слишком длинное
-  // const shortName = item.name.length > 30 ? item.name.substring(0, 30) + "..." : item.name;
-  // parts.push(shortName); 
-  // Решили вообще убрать имя, так как оно часто дублирует запрос. Оставим только если характеристик нет.
-
   const requiredList = item.characteristics.required;
   
   if (requiredList.length > 0) {
      const params = requiredList.map(c => {
-        // Упрощаем названия характеристик (можно добавить маппинг, но пока просто берем как есть)
-        // Например "Размер диагонали экрана" -> "Диагональ" (сложно автоматизировать без словаря)
-        return `${c.title}: ${c.values.join(",")}`;
+        const shortTitle = shortenCharacteristicTitle(c.title);
+        return `${shortTitle}: ${c.values.join(",")}`;
      }).join(" | ");
      parts.push(params);
   } else {
@@ -271,6 +300,8 @@ export async function POST(request: Request) {
       code?: unknown;
       start?: unknown;
       offset?: unknown;
+      page?: unknown; // Номер страницы для пагинации (начинается с 1)
+      limit?: unknown; // Количество элементов на странице (по умолчанию 5)
     };
 
     const code = typeof payload.code === "string" ? payload.code.trim() : "";
@@ -310,8 +341,20 @@ export async function POST(request: Request) {
       0;
     const startIndex = Math.max(0, Math.floor(startParam));
 
-    // Проверяем кэш перед запросом к API
-    const cacheKey = `lookup:${productName.toLowerCase().trim()}`;
+    // Поддержка пагинации: page и limit
+    const pageParam = 
+      coerceNumber(payload.page) ??
+      coerceNumber(url.searchParams.get("page")) ??
+      1;
+    const limitParam = 
+      coerceNumber(payload.limit) ??
+      coerceNumber(url.searchParams.get("limit")) ??
+      5;
+    const page = Math.max(1, Math.floor(pageParam));
+    const limit = Math.max(1, Math.min(20, Math.floor(limitParam))); // Ограничиваем максимум 20
+
+    // Ключ кэша включает страницу для правильного кэширования
+    const cacheKey = `lookup:${productName.toLowerCase().trim()}:page:${page}:limit:${limit}`;
     cleanupCache(); // Периодическая очистка старых записей
     const cached = cache.get(cacheKey);
     let items: KtruItem[];
@@ -319,10 +362,10 @@ export async function POST(request: Request) {
     if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
       // Используем кэшированные данные
       items = cached.data;
-      console.log(`[ktru-lookup] Использован кэш для: ${productName}`);
+      console.log(`[ktru-lookup] Использован кэш для: ${productName} (page ${page}, limit ${limit})`);
     } else {
-      // Делаем запрос к API
-      const response = await fetch(buildQuery(productName), {
+      // Делаем запрос к API с пагинацией
+      const response = await fetch(buildQuery(productName, page, limit), {
         headers: { Accept: "application/json" },
         cache: "no-store",
       });
@@ -344,7 +387,7 @@ export async function POST(request: Request) {
       
       // Сохраняем в кэш
       cache.set(cacheKey, { data: items, timestamp: Date.now() });
-      console.log(`[ktru-lookup] Данные закэшированы для: ${productName}`);
+      console.log(`[ktru-lookup] Данные закэшированы для: ${productName} (page ${page}, limit ${limit}, найдено ${items.length} позиций)`);
     }
     const transformed = transformItems(items);
     const filtered =
@@ -357,7 +400,15 @@ export async function POST(request: Request) {
 
     // 1. Plain format (summary for search)
     if (shape === "plain") {
-      return NextResponse.json({ items: itemsToReturn.map((item) => item.plain) });
+      return NextResponse.json({ 
+        items: itemsToReturn.map((item) => item.plain),
+        // Информация о пагинации для бота
+        pagination: {
+          page,
+          limit,
+          hasMore: items.length === limit, // Если вернулось ровно limit элементов, возможно есть еще
+        }
+      });
     }
 
     // 2. Full/Details format (specific item with full details)
