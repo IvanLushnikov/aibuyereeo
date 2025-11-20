@@ -66,12 +66,19 @@ export const FeedbackForm = ({ abExperimentId, abPlacement, abVariant }: Feedbac
     }
 
     const formElement = event.currentTarget;
-    const form = new FormData(formElement);
-    const payload = Object.fromEntries(form.entries());
-    const name = String(payload.name || "").trim();
-    const email = String(payload.email || "").trim();
-    const phone = String(payload.phone || "").trim();
-    const role = String(payload.role || "").trim();
+    
+    // Получаем значения напрямую из элементов формы для надежности
+    const nameInput = formElement.querySelector<HTMLInputElement>('input[name="name"]');
+    const emailInput = formElement.querySelector<HTMLInputElement>('input[name="email"]');
+    const phoneInput = formElement.querySelector<HTMLInputElement>('input[name="phone"]');
+    const roleSelect = formElement.querySelector<HTMLSelectElement>('select[name="role"]');
+    const commentTextarea = formElement.querySelector<HTMLTextAreaElement>('textarea[name="comment"]');
+    
+    const name = nameInput?.value?.trim() || "";
+    const email = emailInput?.value?.trim() || "";
+    const phone = phoneInput?.value?.trim() || "";
+    const role = roleSelect?.value?.trim() || "";
+    const comment = commentTextarea?.value?.trim() || "";
 
     // Логируем данные для отладки
     console.log("[FeedbackForm] Form submission attempt:", {
@@ -81,27 +88,38 @@ export const FeedbackForm = ({ abExperimentId, abPlacement, abVariant }: Feedbac
       nameLength: name.length,
       emailLength: email.length,
       roleLength: role.length,
+      rawName: nameInput?.value,
+      rawEmail: emailInput?.value,
+      rawRole: roleSelect?.value,
     });
 
-    // Валидация обязательных полей на клиенте
-    if (!name) {
+    // СТРОГАЯ валидация обязательных полей на клиенте
+    if (!name || name.length === 0) {
+      console.error("[FeedbackForm] Validation failed: name is empty");
       setError("Пожалуйста, укажите ваше имя.");
+      nameInput?.focus();
       return;
     }
 
-    if (!email) {
+    if (!email || email.length === 0) {
+      console.error("[FeedbackForm] Validation failed: email is empty");
       setEmailError("Введите адрес электронной почты.");
+      emailInput?.focus();
       return;
     }
 
     // Валидация email на клиенте
     if (!isValidEmail(email)) {
+      console.error("[FeedbackForm] Validation failed: email is invalid", email);
       setEmailError("Введите корректный адрес электронной почты.");
+      emailInput?.focus();
       return;
     }
 
-    if (!role) {
+    if (!role || role.length === 0) {
+      console.error("[FeedbackForm] Validation failed: role is empty");
       setError("Пожалуйста, выберите вашу роль.");
+      roleSelect?.focus();
       return;
     }
 
@@ -127,18 +145,39 @@ export const FeedbackForm = ({ abExperimentId, abPlacement, abVariant }: Feedbac
       lastSubmitTime = now;
       const clientId = ensureClientId();
       
+      // Финальная проверка перед отправкой
+      if (!name || !email || !role) {
+        console.error("[FeedbackForm] CRITICAL: Attempted to submit with empty required fields", {
+          name: !!name,
+          email: !!email,
+          role: !!role,
+        });
+        setError("Ошибка: не все обязательные поля заполнены. Пожалуйста, проверьте форму.");
+        return;
+      }
+
+      const payloadToSend = {
+        name,
+        email,
+        phone: phone || undefined,
+        role,
+        comment: comment || undefined,
+        clientId,
+        sessionId,
+      };
+
+      console.log("[FeedbackForm] Sending payload:", {
+        name: payloadToSend.name,
+        email: payloadToSend.email,
+        role: payloadToSend.role,
+        hasPhone: !!payloadToSend.phone,
+        hasComment: !!payloadToSend.comment,
+      });
+
       const response = await fetch("/api/feedback", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name,
-          email,
-          phone: phone || undefined,
-          role,
-          comment: String(payload.comment || "").trim() || undefined,
-          clientId,
-          sessionId,
-        }),
+        body: JSON.stringify(payloadToSend),
       });
 
       // Читаем ответ один раз
@@ -209,6 +248,7 @@ export const FeedbackForm = ({ abExperimentId, abPlacement, abVariant }: Feedbac
   return (
     <form
       onSubmit={handleSubmit}
+      noValidate
       className="rounded-3xl border border-white/10 bg-white/5 p-10 shadow-neon-soft backdrop-blur-xl"
     >
       <h3 className="font-display text-2xl">Свяжемся для автоматизации закупок</h3>
@@ -230,10 +270,20 @@ export const FeedbackForm = ({ abExperimentId, abPlacement, abVariant }: Feedbac
           Имя
           <input
             name="name"
-            required
             className="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-white placeholder:text-white/40 focus:border-neo-electric focus:outline-none"
             placeholder="Иван"
             aria-required="true"
+            onKeyDown={(e) => {
+              // Предотвращаем отправку формы по Enter в поле имени, если оно пустое
+              if (e.key === "Enter") {
+                const input = e.currentTarget;
+                if (!input.value || input.value.trim().length === 0) {
+                  e.preventDefault();
+                  setError("Пожалуйста, укажите ваше имя.");
+                  input.focus();
+                }
+              }
+            }}
           />
         </label>
         <label className="flex flex-col gap-2 text-sm">
@@ -241,7 +291,6 @@ export const FeedbackForm = ({ abExperimentId, abPlacement, abVariant }: Feedbac
           <input
             type="email"
             name="email"
-            required
             className={`rounded-2xl border px-4 py-3 text-white placeholder:text-white/40 focus:border-neo-electric focus:outline-none ${
               emailError
                 ? "border-red-400 bg-white/10"
@@ -253,6 +302,17 @@ export const FeedbackForm = ({ abExperimentId, abPlacement, abVariant }: Feedbac
             aria-describedby={emailError ? "email-error" : undefined}
             onChange={() => {
               if (emailError) setEmailError(null);
+            }}
+            onKeyDown={(e) => {
+              // Предотвращаем отправку формы по Enter в поле email, если оно пустое
+              if (e.key === "Enter") {
+                const input = e.currentTarget;
+                if (!input.value || input.value.trim().length === 0) {
+                  e.preventDefault();
+                  setEmailError("Введите адрес электронной почты.");
+                  input.focus();
+                }
+              }
             }}
           />
           {emailError && (

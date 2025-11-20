@@ -231,6 +231,10 @@ export class N8NClient {
           errorMessage = `404: ${errorMessage}. Возможно, workflow не активирован в n8n.`;
         } else if (response.status === 500) {
           errorMessage = `500: ${errorMessage}. Проверьте настройки workflow в n8n.`;
+        } else if (response.status === 504) {
+          // Логируем тело ответа для диагностики
+          console.error(`[N8NClient] 504 Gateway Timeout. Тело ответа:`, errorBody.slice(0, 500));
+          errorMessage = `504: Gateway Timeout. Прокси обрывает соединение через 60 сек, пока n8n обрабатывает запрос. ${errorMessage}`;
         }
 
         console.error(`[N8NClient] Ошибка от n8n (статус ${response.status}):`, {

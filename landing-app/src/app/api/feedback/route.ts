@@ -101,14 +101,52 @@ export async function POST(request: Request) {
   }
 
   // Дополнительная проверка: убеждаемся, что обязательные поля не пустые
-  if (!payload.name || !payload.email || !payload.role) {
-    console.error("[Feedback] Critical validation: empty required fields", {
+  if (!payload.name || payload.name.trim().length === 0) {
+    console.error("[Feedback] CRITICAL: name is empty or whitespace", {
       name: payload.name,
-      email: payload.email,
-      role: payload.role,
+      nameLength: payload.name?.length,
     });
     return NextResponse.json(
-      { error: "Required fields are missing" },
+      { error: "Name is required and cannot be empty" },
+      { status: 400 }
+    );
+  }
+
+  if (!payload.email || payload.email.trim().length === 0) {
+    console.error("[Feedback] CRITICAL: email is empty or whitespace", {
+      email: payload.email,
+      emailLength: payload.email?.length,
+    });
+    return NextResponse.json(
+      { error: "Email is required and cannot be empty" },
+      { status: 400 }
+    );
+  }
+
+  if (!payload.role || payload.role.trim().length === 0) {
+    console.error("[Feedback] CRITICAL: role is empty or whitespace", {
+      role: payload.role,
+      roleLength: payload.role?.length,
+    });
+    return NextResponse.json(
+      { error: "Role is required and cannot be empty" },
+      { status: 400 }
+    );
+  }
+
+  // Финальная проверка перед отправкой в webhook
+  const finalName = payload.name.trim();
+  const finalEmail = payload.email.trim();
+  const finalRole = payload.role.trim();
+
+  if (finalName.length === 0 || finalEmail.length === 0 || finalRole.length === 0) {
+    console.error("[Feedback] CRITICAL: Fields are empty after trim", {
+      nameLength: finalName.length,
+      emailLength: finalEmail.length,
+      roleLength: finalRole.length,
+    });
+    return NextResponse.json(
+      { error: "Required fields cannot be empty" },
       { status: 400 }
     );
   }
@@ -118,14 +156,23 @@ export async function POST(request: Request) {
   const webhookPayload = {
     type: "feedback_form",
     submittedAt,
-    name: payload.name,
-    email: payload.email,
-    phone: payload.phone,
-    role: payload.role,
-    comment: payload.comment,
+    name: finalName,
+    email: finalEmail,
+    phone: payload.phone?.trim() || undefined,
+    role: finalRole,
+    comment: payload.comment?.trim() || undefined,
     clientId: payload.clientId,
     sessionId: payload.sessionId,
   };
+
+  // Финальная проверка перед отправкой в webhook
+  if (!webhookPayload.name || !webhookPayload.email || !webhookPayload.role) {
+    console.error("[Feedback] CRITICAL: Webhook payload has empty required fields", webhookPayload);
+    return NextResponse.json(
+      { error: "Cannot send empty data to webhook" },
+      { status: 500 }
+    );
+  }
 
   // Логируем данные перед отправкой в webhook
   console.log("[Feedback] Sending to webhook:", {
@@ -134,6 +181,9 @@ export async function POST(request: Request) {
     role: webhookPayload.role,
     hasPhone: !!webhookPayload.phone,
     hasComment: !!webhookPayload.comment,
+    nameLength: webhookPayload.name.length,
+    emailLength: webhookPayload.email.length,
+    roleLength: webhookPayload.role.length,
   });
 
   await appendEventLog({
