@@ -168,11 +168,29 @@ export class N8NClient {
           webhookUrl: this.webhookUrl.includes('persis.ru') ? 'n8n.persis.ru (через прокси)' : 'прямой URL',
         });
 
-        // 504 Gateway Timeout - прокси обрывает соединение, но n8n продолжает обрабатывать запрос
-        // НЕ делаем retry - таймаут запроса 10 минут, ждем ответа в рамках одного запроса
+        // 504 Gateway Timeout - прокси обрывает соединение через ~60 сек, но n8n продолжает обрабатывать запрос
+        // Делаем ОДИН retry после задержки, чтобы дождаться ответа от n8n
         if (response.status === 504) {
-          console.error(`[N8NClient] 504 Gateway Timeout - прокси обрывает соединение, но n8n обрабатывает запрос. Таймаут запроса ${this.timeoutMs/1000}с.`);
-          return response;
+          if (attempt === 0) {
+            // Первая попытка получила 504 - ждем 60 секунд и делаем retry
+            const elapsed = Date.now() - fetchStartTime;
+            const delay = 60000; // Ждем 60 секунд чтобы n8n закончил обработку
+            const remaining = this.timeoutMs - elapsed - delay;
+            
+            if (remaining < 10000) {
+              // Если осталось меньше 10 секунд до таймаута, не делаем retry
+              console.error(`[N8NClient] 504 Gateway Timeout - недостаточно времени для retry (осталось ${remaining}ms)`);
+              return response;
+            }
+            
+            console.warn(`[N8NClient] 504 Gateway Timeout - прокси обрывает соединение, но n8n обрабатывает запрос. Retry через ${delay/1000}с (прошло ${Math.round(elapsed/1000)}с)`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+            continue; // Делаем retry
+          } else {
+            // Вторая попытка тоже получила 504 - возвращаем ошибку
+            console.error(`[N8NClient] 504 Gateway Timeout - retry тоже получил 504. n8n может еще обрабатывать запрос.`);
+            return response;
+          }
         }
 
         // Для остальных 5xx ошибок делаем retry (кроме последней попытки)
