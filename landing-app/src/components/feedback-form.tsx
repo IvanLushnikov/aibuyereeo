@@ -45,6 +45,12 @@ export const FeedbackForm = ({ abExperimentId, abPlacement, abVariant }: Feedbac
     setEmailError(null);
     setPhoneError(null);
 
+    // Защита от повторной отправки
+    if (state === "submitting") {
+      console.warn("[FeedbackForm] Form is already submitting, ignoring duplicate submit");
+      return;
+    }
+
     // Проверка honeypot (защита от ботов)
     if (honeypotRef.current && honeypotRef.current.value) {
       // Бот заполнил honeypot - игнорируем отправку
@@ -62,12 +68,40 @@ export const FeedbackForm = ({ abExperimentId, abPlacement, abVariant }: Feedbac
     const formElement = event.currentTarget;
     const form = new FormData(formElement);
     const payload = Object.fromEntries(form.entries());
+    const name = String(payload.name || "").trim();
     const email = String(payload.email || "").trim();
     const phone = String(payload.phone || "").trim();
+    const role = String(payload.role || "").trim();
+
+    // Логируем данные для отладки
+    console.log("[FeedbackForm] Form submission attempt:", {
+      hasName: !!name,
+      hasEmail: !!email,
+      hasRole: !!role,
+      nameLength: name.length,
+      emailLength: email.length,
+      roleLength: role.length,
+    });
+
+    // Валидация обязательных полей на клиенте
+    if (!name) {
+      setError("Пожалуйста, укажите ваше имя.");
+      return;
+    }
+
+    if (!email) {
+      setEmailError("Введите адрес электронной почты.");
+      return;
+    }
 
     // Валидация email на клиенте
     if (!isValidEmail(email)) {
       setEmailError("Введите корректный адрес электронной почты.");
+      return;
+    }
+
+    if (!role) {
+      setError("Пожалуйста, выберите вашу роль.");
       return;
     }
 
@@ -97,11 +131,11 @@ export const FeedbackForm = ({ abExperimentId, abPlacement, abVariant }: Feedbac
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: payload.name,
+          name,
           email,
-          phone,
-          role: payload.role,
-          comment: payload.comment,
+          phone: phone || undefined,
+          role,
+          comment: String(payload.comment || "").trim() || undefined,
           clientId,
           sessionId,
         }),

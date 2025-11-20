@@ -313,8 +313,8 @@ export async function POST(request: Request) {
         );
       }
 
-      // Отдаем чистый JSON без сжатия, но ограничиваем список характеристик (макс 20)
-      const limitedOptional = targetItem.characteristics.optional.slice(0, 20);
+      // Отдаем чистый JSON без сжатия, но ограничиваем список характеристик (макс 15)
+      const limitedOptional = targetItem.characteristics.optional.slice(0, 15);
 
       return NextResponse.json({
         code: targetItem.code,

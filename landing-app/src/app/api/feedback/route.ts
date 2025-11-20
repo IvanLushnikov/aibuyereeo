@@ -80,11 +80,35 @@ export async function POST(request: Request) {
     );
   }
 
+  // Логируем входящие данные для отладки
+  console.log("[Feedback] Received data:", {
+    hasName: !!(data as any).name,
+    hasEmail: !!(data as any).email,
+    hasRole: !!(data as any).role,
+    nameLength: String((data as any).name || "").length,
+    emailLength: String((data as any).email || "").length,
+    roleLength: String((data as any).role || "").length,
+  });
+
   const { errors, payload } = validatePayload(data as Partial<FeedbackPayload>);
 
   if (errors.length > 0) {
+    console.error("[Feedback] Validation failed:", errors, "Payload:", JSON.stringify(payload));
     return NextResponse.json(
       { error: "Validation failed", details: errors },
+      { status: 400 }
+    );
+  }
+
+  // Дополнительная проверка: убеждаемся, что обязательные поля не пустые
+  if (!payload.name || !payload.email || !payload.role) {
+    console.error("[Feedback] Critical validation: empty required fields", {
+      name: payload.name,
+      email: payload.email,
+      role: payload.role,
+    });
+    return NextResponse.json(
+      { error: "Required fields are missing" },
       { status: 400 }
     );
   }
@@ -94,8 +118,23 @@ export async function POST(request: Request) {
   const webhookPayload = {
     type: "feedback_form",
     submittedAt,
-    ...payload,
+    name: payload.name,
+    email: payload.email,
+    phone: payload.phone,
+    role: payload.role,
+    comment: payload.comment,
+    clientId: payload.clientId,
+    sessionId: payload.sessionId,
   };
+
+  // Логируем данные перед отправкой в webhook
+  console.log("[Feedback] Sending to webhook:", {
+    name: webhookPayload.name,
+    email: webhookPayload.email,
+    role: webhookPayload.role,
+    hasPhone: !!webhookPayload.phone,
+    hasComment: !!webhookPayload.comment,
+  });
 
   await appendEventLog({
     timestamp: submittedAt,
