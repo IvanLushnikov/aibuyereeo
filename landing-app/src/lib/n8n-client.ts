@@ -78,7 +78,6 @@ export class N8NClient {
   private secret?: string;
   private timeoutMs: number;
   private readonly MAX_RETRIES = 2;
-  private readonly MAX_RETRIES_504 = 10; // Для 504 делаем больше retry (10 минут таймаут)
   private readonly RETRY_DELAY = 1000; // 1 секунда
   private readonly MAX_PAYLOAD_SIZE = 50 * 1024; // 50KB
 
@@ -170,28 +169,10 @@ export class N8NClient {
         });
 
         // 504 Gateway Timeout - прокси обрывает соединение, но n8n продолжает обрабатывать запрос
-        // Делаем retry с задержкой до 10 минут (таймаут запроса)
+        // НЕ делаем retry - таймаут запроса 10 минут, ждем ответа в рамках одного запроса
         if (response.status === 504) {
-          if (attempt < this.MAX_RETRIES_504) {
-            // Задержка 30 секунд между retry при 504
-            // Всего 10 попыток = 9 задержок по 30 сек = 270 сек (4.5 минуты) + время запросов
-            const delay = 30000; // 30 секунд между попытками
-            const elapsed = Date.now() - fetchStartTime;
-            const remaining = this.timeoutMs - elapsed;
-            
-            if (remaining < delay + 5000) {
-              // Если осталось меньше времени чем задержка + 5 сек на запрос, не делаем retry
-              console.warn(`[N8NClient] 504 Gateway Timeout - недостаточно времени для retry (осталось ${remaining}ms)`);
-              return response;
-            }
-            
-            console.warn(`[N8NClient] 504 Gateway Timeout - прокси обрывает соединение, но n8n обрабатывает запрос. Retry через ${delay/1000}с (попытка ${attempt + 1}/${this.MAX_RETRIES_504}, прошло ${Math.round(elapsed/1000)}с)`);
-            await new Promise(resolve => setTimeout(resolve, delay));
-            continue;
-          } else {
-            console.error(`[N8NClient] 504 Gateway Timeout - все попытки исчерпаны (${this.MAX_RETRIES_504}). n8n может еще обрабатывать запрос.`);
-            return response;
-          }
+          console.error(`[N8NClient] 504 Gateway Timeout - прокси обрывает соединение, но n8n обрабатывает запрос. Таймаут запроса ${this.timeoutMs/1000}с.`);
+          return response;
         }
 
         // Для остальных 5xx ошибок делаем retry (кроме последней попытки)
