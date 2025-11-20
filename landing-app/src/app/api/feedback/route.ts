@@ -182,15 +182,6 @@ export async function POST(request: Request) {
     );
   }
 
-  // ДЕТАЛЬНОЕ логирование ВСЕХ входящих запросов для поиска источника пустых заявок
-  console.log(`[Feedback:${requestId}] ===== ВХОДЯЩИЙ ЗАПРОС =====`);
-  console.log(`[Feedback:${requestId}] Headers:`, {
-    'user-agent': userAgent,
-    'referer': referer,
-    'x-forwarded-for': clientIp,
-  });
-  console.log(`[Feedback:${requestId}] Raw body:`, JSON.stringify(rawData, null, 2));
-  console.log(`[Feedback:${requestId}] =========================`);
 
   // Валидация
   const validation = validatePayload(rawData);
@@ -316,25 +307,11 @@ export async function POST(request: Request) {
   const isEmailInvalid = invalidValues.includes(finalCheck.email.toLowerCase()) || finalCheck.email.length < 5;
   
   if (isNameInvalid || isEmailInvalid || finalCheck.role === "-") {
-    console.error(`[Feedback:${requestId}] ===== БЛОКИРОВКА ПУСТОЙ ЗАЯВКИ =====`);
-    console.error(`[Feedback:${requestId}] Причина блокировки:`, {
-      nameInvalid: isNameInvalid,
-      emailInvalid: isEmailInvalid,
-      roleInvalid: finalCheck.role === "-",
+    console.error(`[Feedback:${requestId}] BLOCKED: Invalid/Empty data`, {
+      name: finalCheck.name,
+      email: finalCheck.email,
+      role: finalCheck.role,
     });
-    console.error(`[Feedback:${requestId}] Данные:`, {
-      name: `"${finalCheck.name}"`,
-      email: `"${finalCheck.email}"`,
-      role: `"${finalCheck.role}"`,
-      nameLength: finalCheck.name.length,
-      emailLength: finalCheck.email.length,
-    });
-    console.error(`[Feedback:${requestId}] Источник:`, {
-      ip: clientIp,
-      userAgent: userAgent,
-      referer: referer,
-    });
-    console.error(`[Feedback:${requestId}] ====================================`);
     return NextResponse.json(
       { error: "Invalid form data" },
       { status: 400 }
