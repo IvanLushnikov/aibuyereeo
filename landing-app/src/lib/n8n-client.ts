@@ -168,10 +168,19 @@ export class N8NClient {
           webhookUrl: this.webhookUrl.includes('persis.ru') ? 'n8n.persis.ru (через прокси)' : 'прямой URL',
         });
 
-        // 504 Gateway Timeout - это таймаут прокси, retry не поможет
+        // 504 Gateway Timeout - прокси обрывает соединение, но n8n продолжает обрабатывать запрос
+        // Делаем retry с задержкой, чтобы дать n8n время закончить обработку
         if (response.status === 504) {
-          console.error(`[N8NClient] 504 Gateway Timeout - прокси обрывает соединение. Retry не поможет.`);
-          return response;
+          if (attempt < this.MAX_RETRIES) {
+            // Увеличиваем задержку для 504 - n8n может обрабатывать запрос долго
+            const delay = this.RETRY_DELAY * (attempt + 1) * 2; // Удваиваем задержку для 504
+            console.warn(`[N8NClient] 504 Gateway Timeout - прокси обрывает соединение, но n8n обрабатывает запрос. Retry через ${delay}ms (попытка ${attempt + 1}/${this.MAX_RETRIES})`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+            continue;
+          } else {
+            console.error(`[N8NClient] 504 Gateway Timeout - все попытки исчерпаны. n8n может еще обрабатывать запрос.`);
+            return response;
+          }
         }
 
         // Для остальных 5xx ошибок делаем retry (кроме последней попытки)
