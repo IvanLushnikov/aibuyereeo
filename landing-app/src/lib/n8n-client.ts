@@ -81,7 +81,7 @@ export class N8NClient {
   private readonly RETRY_DELAY = 1000; // 1 секунда
   private readonly MAX_PAYLOAD_SIZE = 50 * 1024; // 50KB
 
-  private static readonly MAX_REQUEST_TIMEOUT_MS = 300000; // 5 минут (соответствует CHAT_TIMEOUT_MS)
+  private static readonly MAX_REQUEST_TIMEOUT_MS = 600000; // 10 минут (соответствует таймауту прокси)
 
   constructor(webhookUrl: string, secret?: string, timeoutMs: number = 120000) {
     this.webhookUrl = webhookUrl;
@@ -170,7 +170,7 @@ export class N8NClient {
 
         // 504 Gateway Timeout - это таймаут прокси, retry не поможет
         if (response.status === 504) {
-          console.error(`[N8NClient] 504 Gateway Timeout - прокси обрывает соединение через 60 сек. Retry не поможет.`);
+          console.error(`[N8NClient] 504 Gateway Timeout - прокси обрывает соединение. Retry не поможет.`);
           return response;
         }
 
@@ -250,7 +250,7 @@ export class N8NClient {
         } else if (response.status === 504) {
           // Логируем тело ответа для диагностики
           console.error(`[N8NClient] 504 Gateway Timeout. Тело ответа:`, errorBody.slice(0, 500));
-          errorMessage = `504: Gateway Timeout. Прокси обрывает соединение через 60 сек, пока n8n обрабатывает запрос. ${errorMessage}`;
+          errorMessage = `504: Gateway Timeout. Прокси обрывает соединение, пока n8n обрабатывает запрос. ${errorMessage}`;
         }
 
         console.error(`[N8NClient] Ошибка от n8n (статус ${response.status}):`, {

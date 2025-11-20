@@ -16,7 +16,7 @@ services:
       - key: N8N_SECRET
         sync: false
       - key: CHAT_TIMEOUT_MS
-        value: 120000
+        value: 600000
       - key: RATE_LIMIT_WINDOW_SEC
         value: 3600
       - key: RATE_LIMIT_MAX_REQUESTS

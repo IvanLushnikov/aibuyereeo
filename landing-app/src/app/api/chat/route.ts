@@ -287,8 +287,8 @@ export async function POST(request: Request) {
     }
 
     const startedAt = Date.now();
-    // Таймаут 5 минут (300000 мс) для всех запросов (увеличили для теста)
-    const timeoutMs = Number(process.env.CHAT_TIMEOUT_MS ?? 300000);
+    // Таймаут 10 минут (600000 мс) для всех запросов (соответствует таймауту прокси)
+    const timeoutMs = Number(process.env.CHAT_TIMEOUT_MS ?? 600000);
 
     // Валидация payload перед отправкой в n8n
     const n8nPayloadSchema = z.object({
