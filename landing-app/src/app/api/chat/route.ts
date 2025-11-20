@@ -449,23 +449,25 @@ export async function POST(request: Request) {
 
       // Формируем понятное сообщение об ошибке
       // Для инициализации показываем более дружелюбное сообщение
-      if (n8nError.includes("Circuit breaker is open") || n8nError.includes("circuit breaker открыт")) {
+      const n8nErrorLower = n8nError.toLowerCase();
+      
+      if (n8nErrorLower.includes("circuit breaker is open") || n8nErrorLower.includes("circuit breaker открыт")) {
         replyText = isInitial 
           ? "ИИ‑бот временно недоступен. Попробуйте открыть чат через минуту."
           : "ИИ‑бот временно недоступен. Попробуйте позже.";
-      } else if (n8nError.includes("timeout") || n8nError.includes("AbortError") || n8nError.includes("aborted") || n8nError.includes("превысил таймаут")) {
+      } else if (n8nError.includes("504") || n8nErrorLower.includes("timeout") || n8nErrorLower.includes("gateway timeout") || n8nError.includes("AbortError") || n8nErrorLower.includes("aborted") || n8nErrorLower.includes("превысил таймаут")) {
         replyText = isInitial
           ? "ИИ‑бот не отвечает. Попробуйте открыть чат через минуту."
           : "ИИ‑бот слишком долго думает. Попробуйте ещё раз или переформулируйте вопрос.";
-      } else if (n8nError.includes("Payload too large")) {
+      } else if (n8nErrorLower.includes("payload too large")) {
         replyText = "Сообщение слишком большое. Попробуйте сократить текст или историю сообщений.";
         n8nResponseStatus = 413;
-      } else if (n8nError.includes("404") || n8nError.includes("not found") || n8nError.includes("не найден")) {
+      } else if (n8nError.includes("404") || n8nErrorLower.includes("not found") || n8nErrorLower.includes("не найден")) {
         replyText = isInitial
           ? "ИИ‑бот временно недоступен. Обратитесь к администратору."
           : "ИИ‑бот не настроен: Workflow не найден в n8n. Проверьте URL webhook.";
         n8nResponseStatus = 404;
-      } else if (n8nError.includes("500") || n8nError.includes("server error")) {
+      } else if (n8nError.includes("500") || n8nErrorLower.includes("server error")) {
         replyText = isInitial
           ? "ИИ‑бот временно недоступен. Попробуйте открыть чат через минуту."
           : "ИИ‑бот временно недоступен. Проверьте настройки workflow в n8n.";
