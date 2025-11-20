@@ -182,6 +182,13 @@ export async function POST(request: Request) {
     );
   }
 
+  // Логирование тела запроса для отладки пустых заявок (только если что-то пошло не так, или всегда, если есть подозрения)
+  if (request.method === "POST") {
+    console.log(`[Feedback:${requestId}] Incoming request body preview:`, {
+      raw: JSON.stringify(rawData).slice(0, 500)
+    });
+  }
+
   // Валидация
   const validation = validatePayload(rawData);
 
@@ -300,9 +307,13 @@ export async function POST(request: Request) {
     );
   }
 
-  // КРИТИЧЕСКАЯ ПРОВЕРКА: блокируем отправку если данные пустые или содержат только дефисы
-  if (finalCheck.name === "-" || finalCheck.email === "-" || finalCheck.role === "-") {
-    console.error(`[Feedback:${requestId}] BLOCKED: Empty data detected (dash values)`, {
+  // КРИТИЧЕСКАЯ ПРОВЕРКА: блокируем отправку если данные пустые, содержат только дефисы или "undefined"
+  const invalidValues = ["-", "—", "_", "нет", "empty", "undefined", "null"];
+  const isNameInvalid = invalidValues.includes(finalCheck.name.toLowerCase()) || finalCheck.name.length < 2;
+  const isEmailInvalid = invalidValues.includes(finalCheck.email.toLowerCase()) || finalCheck.email.length < 5;
+  
+  if (isNameInvalid || isEmailInvalid || finalCheck.role === "-") {
+    console.error(`[Feedback:${requestId}] BLOCKED: Invalid/Empty data detected`, {
       name: finalCheck.name,
       email: finalCheck.email,
       role: finalCheck.role,
