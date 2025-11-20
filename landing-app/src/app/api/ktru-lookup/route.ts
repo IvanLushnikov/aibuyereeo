@@ -313,13 +313,15 @@ export async function POST(request: Request) {
         );
       }
 
-      // Отдаем чистый JSON без сжатия
+      // Отдаем чистый JSON без сжатия, но ограничиваем список характеристик (макс 20)
+      const limitedOptional = targetItem.characteristics.optional.slice(0, 20);
+
       return NextResponse.json({
         code: targetItem.code,
         name: targetItem.name,
         okpdName: targetItem.okpdName,
         mandatory_characteristics: targetItem.characteristics.required,
-        optional_characteristics: targetItem.characteristics.optional,
+        optional_characteristics: limitedOptional,
       });
     }
 
