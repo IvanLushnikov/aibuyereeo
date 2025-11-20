@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 const KTRU_API_URL = "http://ktru.services.persis.ru/api/Ktru/GetKtru";
 const DEFAULT_PARAMS = {
   IncludeChars: "true",
-  Limit: "10",
+  Limit: "15", // Вернули 15, но будем сильно сжимать ответ
   Page: "1",
   WithActualKtrusOnly: "true",
 };
@@ -54,7 +54,6 @@ type ItemWithPlain = TransformedItem & {
   plain: string;
 };
 
-const FIELD_SEPARATOR = "   ";
 const OPTIONAL_KEY_PREFIX = "o";
 const OPTIONAL_CHUNK_SIZE = 5;
 
@@ -73,13 +72,13 @@ function formatValue(value?: KtruValue | null) {
   const max = value.максимальноеЗначение;
 
   if (min !== undefined && min !== null && max !== undefined && max !== null) {
-    return `${min}–${max}`;
+    return `${min}-${max}`; // Заменили тире на дефис для экономии
   }
   if (min !== undefined && min !== null) {
-    return `≥ ${min}`;
+    return `>${min}`; // Заменили "≥ " на ">" для краткости
   }
   if (max !== undefined && max !== null) {
-    return `≤ ${max}`;
+    return `<${max}`; // Заменили "≤ " на "<" для краткости
   }
   return null;
 }
@@ -138,36 +137,29 @@ function formatPlain(
   item: TransformedItem,
   options: { includeOptional?: boolean } = {},
 ) {
-  const sections: string[] = [];
+  // ULTRA-LIGHT FORMAT: "CODE | Param1: Val1, Val2 | Param2: Val3"
+  const parts: string[] = [item.code];
 
-  const headerParts = [item.code, item.name];
-  if (item.okpdName) {
-    headerParts.push(item.okpdName);
-  }
-  sections.push(headerParts.join(FIELD_SEPARATOR));
+  // Добавляем имя, но обрезаем если слишком длинное
+  // const shortName = item.name.length > 30 ? item.name.substring(0, 30) + "..." : item.name;
+  // parts.push(shortName); 
+  // Решили вообще убрать имя, так как оно часто дублирует запрос. Оставим только если характеристик нет.
 
-  const formatGroup = (label: string, list: NormalizedCharacteristic[]) => {
-    if (!list.length) return null;
-    const entries = list.map((characteristic) => {
-      const values = characteristic.values.join(", ");
-      return `${characteristic.title} = ${values}`;
-    });
-    return `${label}: ${entries.join(" | ")}`;
-  };
-
-  const requiredGroup = formatGroup("обязательные", item.characteristics.required);
-  if (requiredGroup) {
-    sections.push(requiredGroup);
-  }
-
-  if (options.includeOptional) {
-    const optionalGroup = formatGroup("необязательные", item.characteristics.optional);
-    if (optionalGroup) {
-      sections.push(optionalGroup);
-    }
+  const requiredList = item.characteristics.required;
+  
+  if (requiredList.length > 0) {
+     const params = requiredList.map(c => {
+        // Упрощаем названия характеристик (можно добавить маппинг, но пока просто берем как есть)
+        // Например "Размер диагонали экрана" -> "Диагональ" (сложно автоматизировать без словаря)
+        return `${c.title}: ${c.values.join(",")}`;
+     }).join(" | ");
+     parts.push(params);
+  } else {
+     // Если нет обязательных характеристик, тогда добавляем имя, чтобы хоть что-то было понятно
+     parts.push(item.name);
   }
 
-  return sections.join(" || ");
+  return parts.join(" | ");
 }
 
 function compressOptionalCharacteristics(items: ItemWithPlain[]) {
@@ -237,21 +229,30 @@ export async function POST(request: Request) {
       offset?: unknown;
     };
 
+    const code = typeof payload.code === "string" ? payload.code.trim() : "";
+    
     const rawName =
       typeof payload.productName === "string"
         ? payload.productName
         : typeof payload.query === "string"
           ? payload.query
           : "";
-    const productName = rawName.trim();
-    const tokens = tokenize(productName);
+          
+    let productName = rawName.trim();
+
+    // Если имя не передано, но передан код — ищем по коду
+    if (!productName && code) {
+      productName = code;
+    }
 
     if (!productName) {
       return NextResponse.json(
-        { error: "Поле productName обязательно и должно содержать название товара." },
+        { error: "Поле productName или code обязательно." },
         { status: 400 },
       );
     }
+
+    const tokens = tokenize(productName);
 
     const url = new URL(request.url);
     const shapeParam = url.searchParams.get("shape");
@@ -293,33 +294,43 @@ export async function POST(request: Request) {
           );
     const itemsToReturn = filtered.length ? filtered : transformed;
 
+    // 1. Plain format (summary for search)
     if (shape === "plain") {
       return NextResponse.json({ items: itemsToReturn.map((item) => item.plain) });
     }
 
-    if (shape === "optional") {
-      const codeParam =
-        typeof payload.code === "string"
-          ? payload.code.trim()
-          : url.searchParams.get("code")?.trim() ?? "";
-
-      if (!codeParam) {
-        return NextResponse.json(
-          { error: "Для shape=optional требуется параметр code." },
-          { status: 400 },
-        );
-      }
-
-      const targetItem =
-        itemsToReturn.find((item) => item.code === codeParam) ??
-        transformed.find((item) => item.code === codeParam);
+    // 2. Full/Details format (specific item with full details)
+    if (shape === "full") {
+      // Если передан code, ищем конкретно его, иначе берем первый релевантный
+      const targetItem = code 
+        ? (itemsToReturn.find(i => i.code === code) || transformed.find(i => i.code === code))
+        : itemsToReturn[0];
 
       if (!targetItem) {
         return NextResponse.json(
-          { error: "Код КТРУ не найден для текущего запроса." },
-          { status: 404 },
+          { error: "Код КТРУ не найден." },
+          { status: 404 }
         );
       }
+
+      // Отдаем чистый JSON без сжатия
+      return NextResponse.json({
+        code: targetItem.code,
+        name: targetItem.name,
+        okpdName: targetItem.okpdName,
+        mandatory_characteristics: targetItem.characteristics.required,
+        optional_characteristics: targetItem.characteristics.optional,
+      });
+    }
+
+    // 3. Chunked optional (legacy)
+    if (shape === "optional") {
+      // ... старый код для совместимости ...
+      const codeParam = code || url.searchParams.get("code")?.trim() || "";
+       if (!codeParam) return NextResponse.json({ error: "code required" }, { status: 400 });
+       
+       const targetItem = itemsToReturn.find(i => i.code === codeParam) || transformed.find(i => i.code === codeParam);
+       if (!targetItem) return NextResponse.json({ error: "not found" }, { status: 404 });
 
       const total = targetItem.characteristics.optional.length;
       const start = Math.min(startIndex, total);
@@ -328,20 +339,14 @@ export async function POST(request: Request) {
 
       return NextResponse.json({
         code: targetItem.code,
-        name: targetItem.name,
-        okpdName: targetItem.okpdName,
         chunk: {
-          start,
-          end,
-          size: OPTIONAL_CHUNK_SIZE,
-          total,
-          hasMore: end < total,
-          nextStart: end < total ? end : null,
-          items: chunk,
-        },
+            items: chunk,
+            hasMore: end < total
+        }
       });
     }
 
+    // 4. Default (compressed list)
     const { compressedItems, dictionary } = compressOptionalCharacteristics(itemsToReturn);
 
     return NextResponse.json({
@@ -356,4 +361,3 @@ export async function POST(request: Request) {
     );
   }
 }
-

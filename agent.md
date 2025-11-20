@@ -78,3 +78,5 @@
 
 This document is the entry point for every human collaborator and AI agent. Whenever architecture, user journeys, or operational procedures change, update the **Project Overview**, **Key Flows**, and **Guidance for AI Assistants** sections so anyone working in the repository always relies on an up-to-date `agent.md`. Failing to check this file before contributing is considered a process violation.
 
+
+
