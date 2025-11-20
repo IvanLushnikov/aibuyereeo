@@ -271,6 +271,16 @@ export class N8NClient {
       console.log("[N8NClient] Длина ответа:", responseText.length);
       console.log("[N8NClient] Content-Type:", response.headers.get("content-type"));
       
+      // Проверка на пустой ответ
+      if (!responseText || responseText.trim().length === 0) {
+        console.error("[N8NClient] КРИТИЧЕСКАЯ ОШИБКА: n8n вернул пустой ответ!");
+        console.error("[N8NClient] Проверьте настройки workflow в n8n:");
+        console.error("[N8NClient] - Убедитесь, что нода 'Respond to Webhook' настроена правильно");
+        console.error("[N8NClient] - Проверьте, что workflow возвращает JSON с полем 'reply'");
+        console.error("[N8NClient] - Возможно, workflow завершается с ошибкой до отправки ответа");
+        throw new Error("n8n вернул пустой ответ. Проверьте настройки 'Respond to Webhook' в n8n workflow - он должен возвращать JSON с полем 'reply'");
+      }
+      
       let data: N8NResponse;
       
       try {
@@ -279,7 +289,7 @@ export class N8NClient {
       } catch (parseError) {
         console.error("[N8NClient] Ошибка парсинга ответа от n8n:", parseError);
         console.error("[N8NClient] Сырой ответ:", responseText.slice(0, 500));
-        throw new Error("n8n вернул не-JSON ответ");
+        throw new Error(`n8n вернул не-JSON ответ. Ответ: ${responseText.slice(0, 200)}`);
       }
 
       // Извлекаем reply из разных возможных полей
