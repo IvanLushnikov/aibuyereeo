@@ -297,7 +297,7 @@ export async function POST(request: Request) {
       history: z.array(z.object({
         role: z.enum(['user', 'agent']),
         content: z.string().max(4000),
-      })).max(10),
+      })).max(8), // Context Window Length: 8 сообщений
       meta: z.record(z.string(), z.unknown()).optional(),
       receivedAt: z.string().datetime(),
     });

@@ -564,7 +564,7 @@ export const ChatWidget = ({ mode = "drawer", defaultOpen = false, hideFloatingB
           return true;
         })
         .map((m) => ({ role: m.role, content: m.content }))
-        .slice(-10);
+        .slice(-8); // Context Window Length: 8 сообщений
 
       const response = await fetch("/api/chat", {
         method: "POST",

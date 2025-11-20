@@ -8,6 +8,40 @@ const DEFAULT_PARAMS = {
   WithActualKtrusOnly: "true",
 };
 
+// In-memory кэш для результатов поиска КТРУ
+type CacheEntry = {
+  data: KtruItem[];
+  timestamp: number;
+};
+
+const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 часа в миллисекундах
+const MAX_CACHE_SIZE = 1000; // Максимум 1000 записей в кэше
+const cache = new Map<string, CacheEntry>();
+
+// Очистка старых записей из кэша
+function cleanupCache() {
+  const now = Date.now();
+  const keysToDelete: string[] = [];
+  
+  for (const [key, entry] of cache.entries()) {
+    if (now - entry.timestamp > CACHE_TTL) {
+      keysToDelete.push(key);
+    }
+  }
+  
+  keysToDelete.forEach(key => cache.delete(key));
+  
+  // Если кэш все еще слишком большой, удаляем самые старые записи
+  if (cache.size > MAX_CACHE_SIZE) {
+    const entries = Array.from(cache.entries());
+    entries.sort((a, b) => a[1].timestamp - b[1].timestamp);
+    const toRemove = cache.size - MAX_CACHE_SIZE;
+    for (let i = 0; i < toRemove && entries.length > 0; i++) {
+      cache.delete(entries[i][0]);
+    }
+  }
+}
+
 type KtruValue = {
   текстовоеОписание?: string | null;
   минимальноеЗначение?: number | null;
@@ -266,25 +300,42 @@ export async function POST(request: Request) {
       0;
     const startIndex = Math.max(0, Math.floor(startParam));
 
-    const response = await fetch(buildQuery(productName), {
-      headers: { Accept: "application/json" },
-      cache: "no-store",
-    });
+    // Проверяем кэш перед запросом к API
+    const cacheKey = `lookup:${productName.toLowerCase().trim()}`;
+    cleanupCache(); // Периодическая очистка старых записей
+    const cached = cache.get(cacheKey);
+    let items: KtruItem[];
 
-    if (!response.ok) {
-      const errorText = await response.text().catch(() => "");
-      return NextResponse.json(
-        {
-          error: "Не удалось получить данные КТРУ",
-          status: response.status,
-          detail: errorText || undefined,
-        },
-        { status: 502 },
-      );
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+      // Используем кэшированные данные
+      items = cached.data;
+      console.log(`[ktru-lookup] Использован кэш для: ${productName}`);
+    } else {
+      // Делаем запрос к API
+      const response = await fetch(buildQuery(productName), {
+        headers: { Accept: "application/json" },
+        cache: "no-store",
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => "");
+        return NextResponse.json(
+          {
+            error: "Не удалось получить данные КТРУ",
+            status: response.status,
+            detail: errorText || undefined,
+          },
+          { status: 502 },
+        );
+      }
+
+      const data = (await response.json()) as unknown;
+      items = Array.isArray(data) ? (data as KtruItem[]) : [];
+      
+      // Сохраняем в кэш
+      cache.set(cacheKey, { data: items, timestamp: Date.now() });
+      console.log(`[ktru-lookup] Данные закэшированы для: ${productName}`);
     }
-
-    const data = (await response.json()) as unknown;
-    const items = Array.isArray(data) ? (data as KtruItem[]) : [];
     const transformed = transformItems(items);
     const filtered =
       tokens.length === 0
