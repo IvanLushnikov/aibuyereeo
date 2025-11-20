@@ -138,15 +138,25 @@ function transformItems(items: KtruItem[]): ItemWithPlain[] {
     .map((item) => {
       const required: Array<{ title: string; values: string[] }> = [];
       const optional: Array<{ title: string; values: string[] }> = [];
+      const seenRequiredTitles = new Set<string>();
+      const seenOptionalTitles = new Set<string>();
 
       for (const characteristic of item.характеристики ?? []) {
         const normalized = normalizeCharacteristic(characteristic);
         if (!normalized) continue;
 
         if (characteristic.обязательнаКПрименению) {
-          required.push(normalized);
+          // Убираем дубликаты по названию характеристики
+          if (!seenRequiredTitles.has(normalized.title)) {
+            seenRequiredTitles.add(normalized.title);
+            required.push(normalized);
+          }
         } else {
-          optional.push(normalized);
+          // Убираем дубликаты по названию характеристики
+          if (!seenOptionalTitles.has(normalized.title)) {
+            seenOptionalTitles.add(normalized.title);
+            optional.push(normalized);
+          }
         }
       }
 
@@ -364,15 +374,50 @@ export async function POST(request: Request) {
         );
       }
 
-      // Отдаем чистый JSON без сжатия, но ограничиваем список характеристик (макс 10)
+      // Функция для сокращения названий характеристик (убираем повторяющиеся части)
+      const shortenTitle = (title: string): string => {
+        // Убираем общие префиксы
+        const commonPrefixes = [
+          "Количество встроенных в корпус ",
+          "Количество ",
+          "Наличие ",
+          "Тип ",
+          "Размер ",
+        ];
+        
+        let shortened = title;
+        for (const prefix of commonPrefixes) {
+          if (shortened.startsWith(prefix)) {
+            shortened = shortened.substring(prefix.length);
+            break;
+          }
+        }
+        
+        // Убираем длинные пояснения в скобках
+        shortened = shortened.replace(/\s*\([^)]+\)/g, "");
+        
+        return shortened.trim();
+      };
+
+      // Форматируем обязательные характеристики в плоский список строк
+      const req = targetItem.characteristics.required.map(c => {
+        const shortTitle = shortenTitle(c.title);
+        return `${shortTitle}: ${c.values.join(",")}`;
+      });
+
+      // Ограничиваем опциональные характеристики (макс 10) и форматируем в плоский список
       const limitedOptional = targetItem.characteristics.optional.slice(0, 10);
+      const opt = limitedOptional.map(c => {
+        const shortTitle = shortenTitle(c.title);
+        return `${shortTitle}: ${c.values.join(",")}`;
+      });
 
       return NextResponse.json({
         code: targetItem.code,
         name: targetItem.name,
         okpdName: targetItem.okpdName,
-        mandatory_characteristics: targetItem.characteristics.required,
-        optional_characteristics: limitedOptional,
+        req,
+        opt,
       });
     }
 
