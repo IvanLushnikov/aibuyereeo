@@ -167,9 +167,13 @@ export const FeedbackForm = ({ abExperimentId, abPlacement, abVariant }: Feedbac
     const finalEmailCheck = normalizedEmail.trim();
     const finalRoleCheck = normalizedRole.trim();
 
-    if (finalNameCheck.length === 0 || 
-        finalNameCheck.length < 2 ||
-        finalEmailCheck.length === 0 || 
+    // Проверка на пустые значения и дефолтные плейсхолдеры
+    const invalidValues = ["-", "—", "_", "нет", "empty", "undefined", "null", ""];
+    const isNameInvalid = invalidValues.includes(finalNameCheck.toLowerCase()) || finalNameCheck.length < 2;
+    const isEmailInvalid = invalidValues.includes(finalEmailCheck.toLowerCase()) || finalEmailCheck.length < 5;
+
+    if (isNameInvalid || 
+        isEmailInvalid || 
         !isValidEmail(finalEmailCheck) ||
         finalRoleCheck.length === 0 ||
         !roles.includes(finalRoleCheck as typeof roles[number])) {
@@ -180,6 +184,8 @@ export const FeedbackForm = ({ abExperimentId, abPlacement, abVariant }: Feedbac
         nameValue: finalNameCheck,
         emailValue: finalEmailCheck,
         roleValue: finalRoleCheck,
+        isNameInvalid,
+        isEmailInvalid,
       });
       setError("Ошибка: не все обязательные поля заполнены корректно. Пожалуйста, проверьте форму.");
       setState("idle");
