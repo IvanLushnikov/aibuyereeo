@@ -300,6 +300,21 @@ export async function POST(request: Request) {
     );
   }
 
+  // КРИТИЧЕСКАЯ ПРОВЕРКА: блокируем отправку если данные пустые или содержат только дефисы
+  if (finalCheck.name === "-" || finalCheck.email === "-" || finalCheck.role === "-") {
+    console.error(`[Feedback:${requestId}] BLOCKED: Empty data detected (dash values)`, {
+      name: finalCheck.name,
+      email: finalCheck.email,
+      role: finalCheck.role,
+      ip: clientIp,
+      userAgent: userAgent.slice(0, 100),
+    });
+    return NextResponse.json(
+      { error: "Invalid form data" },
+      { status: 400 }
+    );
+  }
+
   // Логируем успешную валидацию
   console.log(`[Feedback:${requestId}] Validated payload:`, {
     name: finalCheck.name,

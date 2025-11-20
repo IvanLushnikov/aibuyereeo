@@ -23,8 +23,9 @@ services:
         value: 20
       - key: CHAT_ALERT_WEBHOOK_URL
         sync: false
-      - key: USE_POLLING
-        value: "true"
+      # USE_POLLING отключен - n8n не настроен для polling режима
+      # - key: USE_POLLING
+      #   value: "true"
     disk:
       name: logs-disk
       mountPath: /data
