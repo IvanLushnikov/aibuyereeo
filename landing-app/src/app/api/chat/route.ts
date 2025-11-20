@@ -150,7 +150,7 @@ export async function POST(request: Request) {
         message: message || "[initial request]",
         status: "ok",
         meta,
-      });
+      }).catch((err) => console.error("[API] Failed to log user message:", err));
     }
 
     // Используем polling вместо webhook (только если явно включен)
@@ -183,8 +183,8 @@ export async function POST(request: Request) {
       const queueData = await queueResponse.json();
       const messageId = queueData.id;
 
-      // Polling результата (максимум 30 секунд)
-      const maxWaitTime = 30000;
+      // Polling результата (максимум 120 секунд)
+      const maxWaitTime = 120000;
       const pollInterval = 500; // 500ms
       const startTime = Date.now();
 
@@ -287,8 +287,8 @@ export async function POST(request: Request) {
     }
 
     const startedAt = Date.now();
-    // Таймаут 1.5 минуты (90 секунд) для всех запросов
-    const timeoutMs = Number(process.env.CHAT_TIMEOUT_MS ?? 120000);
+    // Таймаут 5 минут (300000 мс) для всех запросов (увеличили для теста)
+    const timeoutMs = Number(process.env.CHAT_TIMEOUT_MS ?? 300000);
 
     // Валидация payload перед отправкой в n8n
     const n8nPayloadSchema = z.object({
