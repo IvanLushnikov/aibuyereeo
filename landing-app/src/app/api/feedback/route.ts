@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { appendEventLog } from "@/lib/log-service";
 
+// Типы данных
 type FeedbackPayload = {
   name: string;
   email: string;
@@ -11,14 +12,23 @@ type FeedbackPayload = {
   sessionId?: string;
 };
 
+// Константы
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const REQUEST_TIMEOUT_MS = Number(process.env.FEEDBACK_TIMEOUT_MS ?? 15000);
 
+// Разрешённые роли (защита от некорректных данных)
+const ALLOWED_ROLES = [
+  "Инициатор",
+  "Закупщик",
+  "Технический специалист",
+  "Другое",
+];
+
 /**
- * Строгая проверка и очистка строкового значения
- * Возвращает пустую строку если значение невалидно
+ * Очистка и нормализация строки
+ * @returns пустую строку если значение невалидно, иначе очищенную строку
  */
-function cleanString(value: unknown, maxLength: number): string {
+function normalizeString(value: unknown, maxLength: number): string {
   if (value === null || value === undefined) {
     return "";
   }
@@ -36,58 +46,71 @@ function cleanString(value: unknown, maxLength: number): string {
 }
 
 /**
- * Проверка что строка не пустая после очистки
+ * Валидация email
  */
-function isNonEmptyString(value: unknown): boolean {
-  const cleaned = cleanString(value, 10000);
-  return cleaned.length > 0;
+function isValidEmail(email: string): boolean {
+  return EMAIL_REGEX.test(email.trim());
 }
 
 /**
- * Валидация payload - возвращает только валидные данные или ошибки
+ * Валидация телефона (опциональное поле)
  */
-function validateAndCleanPayload(data: unknown): { 
-  isValid: boolean; 
-  errors: string[]; 
-  payload?: {
-    name: string;
-    email: string;
-    phone?: string;
-    role: string;
-    comment?: string;
-    clientId?: string;
-    sessionId?: string;
-  };
+function isValidPhone(phone: string): boolean {
+  if (!phone || phone.trim().length === 0) {
+    return true; // Пустой телефон - это нормально (опциональное поле)
+  }
+  const digits = phone.replace(/[^\d+]/g, "");
+  return /^\+?\d{10,12}$/.test(digits);
+}
+
+/**
+ * Основная функция валидации payload
+ * ВОЗВРАЩАЕТ ОШИБКУ ПРИ ЛЮБЫХ ПУСТЫХ ОБЯЗАТЕЛЬНЫХ ПОЛЯХ
+ */
+function validatePayload(data: unknown): {
+  isValid: boolean;
+  errors: string[];
+  payload?: FeedbackPayload;
 } {
   const errors: string[] = [];
 
-  // Проверка что это объект
+  // Проверка типа данных
   if (!data || typeof data !== "object" || Array.isArray(data)) {
-    return { isValid: false, errors: ["Invalid request body"] };
+    return { isValid: false, errors: ["Request body must be a valid object"] };
   }
 
   const raw = data as Record<string, unknown>;
 
-  // СТРОГАЯ проверка обязательных полей
-  const name = cleanString(raw.name, 200);
-  const email = cleanString(raw.email, 320);
-  const role = cleanString(raw.role, 200);
+  // Нормализация и проверка обязательных полей
+  const name = normalizeString(raw.name, 200);
+  const email = normalizeString(raw.email, 320);
+  const role = normalizeString(raw.role, 200);
 
-  // Проверка name
-  if (!isNonEmptyString(name)) {
+  // ЖЁСТКАЯ проверка имени
+  if (name.length === 0) {
     errors.push("name is required and cannot be empty");
+  } else if (name.length < 2) {
+    errors.push("name must be at least 2 characters");
   }
 
-  // Проверка email
-  if (!isNonEmptyString(email)) {
+  // ЖЁСТКАЯ проверка email
+  if (email.length === 0) {
     errors.push("email is required and cannot be empty");
-  } else if (!EMAIL_REGEX.test(email)) {
+  } else if (!isValidEmail(email)) {
     errors.push("email format is invalid");
   }
 
-  // Проверка role
-  if (!isNonEmptyString(role)) {
+  // ЖЁСТКАЯ проверка роли
+  if (role.length === 0) {
     errors.push("role is required and cannot be empty");
+  } else if (!ALLOWED_ROLES.includes(role)) {
+    errors.push(`role must be one of: ${ALLOWED_ROLES.join(", ")}`);
+  }
+
+  // Проверка телефона (если указан)
+  const phone = normalizeString(raw.phone, 32);
+  if (phone.length > 0 && !isValidPhone(phone)) {
+    errors.push("phone format is invalid (expected +7XXXXXXXXXX or 10-12 digits)");
   }
 
   // Если есть ошибки - возвращаем их
@@ -95,25 +118,30 @@ function validateAndCleanPayload(data: unknown): {
     return { isValid: false, errors };
   }
 
-  // Все обязательные поля валидны - формируем payload
-  const phone = cleanString(raw.phone, 32);
-  const comment = cleanString(raw.comment, 2000);
-  const clientId = cleanString(raw.clientId, 512);
-  const sessionId = cleanString(raw.sessionId, 512);
+  // ФИНАЛЬНАЯ проверка перед формированием payload
+  // Ещё раз проверяем, что обязательные поля не пустые
+  if (!name || name.trim().length === 0) {
+    return { isValid: false, errors: ["CRITICAL: name is empty after normalization"] };
+  }
+  if (!email || email.trim().length === 0 || !isValidEmail(email)) {
+    return { isValid: false, errors: ["CRITICAL: email is empty or invalid after normalization"] };
+  }
+  if (!role || role.trim().length === 0 || !ALLOWED_ROLES.includes(role)) {
+    return { isValid: false, errors: ["CRITICAL: role is empty or invalid after normalization"] };
+  }
 
-  return {
-    isValid: true,
-    errors: [],
-    payload: {
-      name,
-      email,
-      phone: phone || undefined,
-      role,
-      comment: comment || undefined,
-      clientId: clientId || undefined,
-      sessionId: sessionId || undefined,
-    },
+  // Формируем payload
+  const payload: FeedbackPayload = {
+    name: name.trim(),
+    email: email.trim().toLowerCase(),
+    role: role.trim(),
+    phone: phone.trim().length > 0 ? phone.trim() : undefined,
+    comment: normalizeString(raw.comment, 2000) || undefined,
+    clientId: normalizeString(raw.clientId, 512) || undefined,
+    sessionId: normalizeString(raw.sessionId, 512) || undefined,
   };
+
+  return { isValid: true, errors: [], payload };
 }
 
 export async function POST(request: Request) {
@@ -127,15 +155,14 @@ export async function POST(request: Request) {
     );
   }
 
-  // Логируем источник запроса
+  // Метаданные запроса для логирования
   const clientIp = request.headers.get("x-forwarded-for") || 
                    request.headers.get("x-real-ip") || 
                    "unknown";
   const userAgent = request.headers.get("user-agent") || "unknown";
   const referer = request.headers.get("referer") || "unknown";
-  
   const requestId = `req-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-  
+
   console.log(`[Feedback:${requestId}] Request received:`, {
     ip: clientIp,
     userAgent: userAgent.slice(0, 100),
@@ -143,7 +170,7 @@ export async function POST(request: Request) {
     timestamp: new Date().toISOString(),
   });
 
-  // Парсим JSON
+  // Парсинг JSON
   let rawData: unknown;
   try {
     rawData = await request.json();
@@ -155,13 +182,13 @@ export async function POST(request: Request) {
     );
   }
 
-  // Валидация и очистка данных
-  const validation = validateAndCleanPayload(rawData);
+  // Валидация
+  const validation = validatePayload(rawData);
 
   if (!validation.isValid || !validation.payload) {
     console.error(`[Feedback:${requestId}] Validation failed:`, {
       errors: validation.errors,
-      rawData: JSON.stringify(rawData).slice(0, 500),
+      rawDataPreview: JSON.stringify(rawData).slice(0, 500),
       ip: clientIp,
       userAgent: userAgent.slice(0, 100),
     });
@@ -176,89 +203,113 @@ export async function POST(request: Request) {
 
   const payload = validation.payload;
 
-  // АБСОЛЮТНАЯ ФИНАЛЬНАЯ ПРОВЕРКА - если что-то не так, блокируем
+  // АБСОЛЮТНАЯ ФИНАЛЬНАЯ ПРОВЕРКА перед отправкой в webhook
+  // Эта проверка - последний рубеж защиты от пустых данных
   if (!payload.name || 
       payload.name.trim().length === 0 ||
-      !payload.email || 
-      payload.email.trim().length === 0 ||
-      !EMAIL_REGEX.test(payload.email) ||
-      !payload.role || 
-      payload.role.trim().length === 0) {
-    console.error(`[Feedback:${requestId}] CRITICAL: Final validation failed`, {
+      payload.name.trim().length < 2) {
+    console.error(`[Feedback:${requestId}] BLOCKED: Invalid name`, {
       name: payload.name,
-      email: payload.email,
-      role: payload.role,
       nameLength: payload.name?.length || 0,
-      emailLength: payload.email?.length || 0,
-      roleLength: payload.role?.length || 0,
       ip: clientIp,
-      userAgent: userAgent.slice(0, 100),
     });
     return NextResponse.json(
-      { error: "Required fields are missing or invalid" },
+      { error: "Invalid name" },
+      { status: 400 }
+    );
+  }
+
+  if (!payload.email || 
+      payload.email.trim().length === 0 ||
+      !isValidEmail(payload.email)) {
+    console.error(`[Feedback:${requestId}] BLOCKED: Invalid email`, {
+      email: payload.email,
+      emailLength: payload.email?.length || 0,
+      ip: clientIp,
+    });
+    return NextResponse.json(
+      { error: "Invalid email" },
+      { status: 400 }
+    );
+  }
+
+  if (!payload.role || 
+      payload.role.trim().length === 0 ||
+      !ALLOWED_ROLES.includes(payload.role)) {
+    console.error(`[Feedback:${requestId}] BLOCKED: Invalid role`, {
+      role: payload.role,
+      roleLength: payload.role?.length || 0,
+      ip: clientIp,
+    });
+    return NextResponse.json(
+      { error: "Invalid role" },
       { status: 400 }
     );
   }
 
   const submittedAt = new Date().toISOString();
 
-  // Формируем payload для n8n
+  // Формируем payload для n8n webhook
   const webhookPayload = {
     type: "feedback_form",
     submittedAt,
-    name: payload.name,
-    email: payload.email,
-    phone: payload.phone,
-    role: payload.role,
-    comment: payload.comment,
-    clientId: payload.clientId,
-    sessionId: payload.sessionId,
-    // Дублируем в body для совместимости с n8n
+    name: payload.name.trim(),
+    email: payload.email.trim().toLowerCase(),
+    phone: payload.phone?.trim() || undefined,
+    role: payload.role.trim(),
+    comment: payload.comment?.trim() || undefined,
+    clientId: payload.clientId?.trim() || undefined,
+    sessionId: payload.sessionId?.trim() || undefined,
+    // Дублируем в body для совместимости
     body: {
-      name: payload.name,
-      email: payload.email,
-      phone: payload.phone,
-      role: payload.role,
-      comment: payload.comment,
+      name: payload.name.trim(),
+      email: payload.email.trim().toLowerCase(),
+      phone: payload.phone?.trim() || undefined,
+      role: payload.role.trim(),
+      comment: payload.comment?.trim() || undefined,
     },
   };
 
-  // ЕЩЕ ОДНА ПРОВЕРКА перед отправкой
-  const finalName = String(webhookPayload.name || "").trim();
-  const finalEmail = String(webhookPayload.email || "").trim();
-  const finalRole = String(webhookPayload.role || "").trim();
+  // ЕЩЁ ОДНА ПРОВЕРКА перед отправкой в webhook
+  const finalCheck = {
+    name: String(webhookPayload.name || "").trim(),
+    email: String(webhookPayload.email || "").trim(),
+    role: String(webhookPayload.role || "").trim(),
+  };
 
-  if (finalName.length === 0 || 
-      finalEmail.length === 0 || 
-      !EMAIL_REGEX.test(finalEmail) ||
-      finalRole.length === 0) {
-    console.error(`[Feedback:${requestId}] BLOCKED: Empty data before webhook`, {
-      name: finalName,
-      email: finalEmail,
-      role: finalRole,
-      nameLength: finalName.length,
-      emailLength: finalEmail.length,
-      roleLength: finalRole.length,
+  if (finalCheck.name.length === 0 || 
+      finalCheck.name.length < 2 ||
+      finalCheck.email.length === 0 || 
+      !isValidEmail(finalCheck.email) ||
+      finalCheck.role.length === 0 ||
+      !ALLOWED_ROLES.includes(finalCheck.role)) {
+    console.error(`[Feedback:${requestId}] BLOCKED: Final check failed before webhook`, {
+      name: finalCheck.name,
+      email: finalCheck.email,
+      role: finalCheck.role,
+      nameLength: finalCheck.name.length,
+      emailLength: finalCheck.email.length,
+      roleLength: finalCheck.role.length,
       ip: clientIp,
       userAgent: userAgent.slice(0, 100),
       fullPayload: JSON.stringify(webhookPayload),
     });
     return NextResponse.json(
-      { error: "Cannot send empty or invalid data to webhook" },
+      { error: "Cannot send invalid data to webhook" },
       { status: 400 }
     );
   }
 
   // Логируем успешную валидацию
   console.log(`[Feedback:${requestId}] Validated payload:`, {
-    name: finalName,
-    email: finalEmail,
-    role: finalRole,
+    name: finalCheck.name,
+    email: finalCheck.email,
+    role: finalCheck.role,
     hasPhone: !!webhookPayload.phone,
     hasComment: !!webhookPayload.comment,
-    nameLength: finalName.length,
-    emailLength: finalEmail.length,
-    roleLength: finalRole.length,
+    nameLength: finalCheck.name.length,
+    emailLength: finalCheck.email.length,
+    roleLength: finalCheck.role.length,
   });
 
   // Логируем событие
@@ -276,7 +327,7 @@ export async function POST(request: Request) {
     console.warn(`[Feedback:${requestId}] Failed to append event log:`, error);
   });
 
-  // Отправляем в webhook
+  // Отправка в webhook с таймаутом
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 

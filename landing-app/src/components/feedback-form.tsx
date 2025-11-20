@@ -10,19 +10,9 @@ const roles = [
   "Закупщик",
   "Технический специалист",
   "Другое",
-];
+] as const;
 
 type FormState = "idle" | "submitting" | "success";
-
-// Валидация email
-const isValidEmail = (email: string): boolean => {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email.trim());
-};
-
-// Rate limiting на клиенте: минимум 3 секунды между отправками
-let lastSubmitTime = 0;
-const MIN_SUBMIT_INTERVAL = 3000;
 
 type FeedbackFormProps = {
   abExperimentId?: string;
@@ -30,14 +20,70 @@ type FeedbackFormProps = {
   abVariant?: string | null;
 };
 
+// Валидация email
+const isValidEmail = (email: string): boolean => {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email.trim());
+};
+
+// Валидация телефона (опциональное поле)
+const isValidPhone = (phone: string): boolean => {
+  if (!phone || phone.trim().length === 0) {
+    return true; // Пустой телефон - это нормально
+  }
+  const digits = phone.replace(/[^\d+]/g, "");
+  return /^\+?\d{10,12}$/.test(digits);
+};
+
+// Rate limiting на клиенте: минимум 3 секунды между отправками
+let lastSubmitTime = 0;
+const MIN_SUBMIT_INTERVAL = 3000;
+
 export const FeedbackForm = ({ abExperimentId, abPlacement, abVariant }: FeedbackFormProps) => {
+  // Контролируемые поля формы
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [role, setRole] = useState<string>(roles[0]);
+  const [comment, setComment] = useState("");
+
+  // Состояния формы
   const [state, setState] = useState<FormState>("idle");
   const [error, setError] = useState<string | null>(null);
   const [emailError, setEmailError] = useState<string | null>(null);
   const [phoneError, setPhoneError] = useState<string | null>(null);
+
   const sessionId = useMemo(() => uuid(), []);
   const honeypotRef = useRef<HTMLInputElement>(null);
 
+  // Очистка ошибок при изменении полей
+  const handleNameChange = (value: string) => {
+    setName(value);
+    if (error && value.trim().length > 0) {
+      setError(null);
+    }
+  };
+
+  const handleEmailChange = (value: string) => {
+    setEmail(value);
+    if (emailError) {
+      setEmailError(null);
+    }
+  };
+
+  const handlePhoneChange = (value: string) => {
+    setPhone(value);
+    if (phoneError) {
+      setPhoneError(null);
+    }
+  };
+
+  const handleRoleChange = (value: string) => {
+    setRole(value);
+    if (error && value.trim().length > 0) {
+      setError(null);
+    }
+  };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -53,7 +99,6 @@ export const FeedbackForm = ({ abExperimentId, abPlacement, abVariant }: Feedbac
 
     // Проверка honeypot (защита от ботов)
     if (honeypotRef.current && honeypotRef.current.value) {
-      // Бот заполнил honeypot - игнорируем отправку
       console.warn("[FeedbackForm] Honeypot triggered");
       return;
     }
@@ -65,114 +110,106 @@ export const FeedbackForm = ({ abExperimentId, abPlacement, abVariant }: Feedbac
       return;
     }
 
-    const formElement = event.currentTarget;
-    
-    // Получаем значения напрямую из элементов формы для надежности
-    const nameInput = formElement.querySelector<HTMLInputElement>('input[name="name"]');
-    const emailInput = formElement.querySelector<HTMLInputElement>('input[name="email"]');
-    const phoneInput = formElement.querySelector<HTMLInputElement>('input[name="phone"]');
-    const roleSelect = formElement.querySelector<HTMLSelectElement>('select[name="role"]');
-    const commentTextarea = formElement.querySelector<HTMLTextAreaElement>('textarea[name="comment"]');
-    
-    const name = nameInput?.value?.trim() || "";
-    const email = emailInput?.value?.trim() || "";
-    const phone = phoneInput?.value?.trim() || "";
-    const role = roleSelect?.value?.trim() || "";
-    const comment = commentTextarea?.value?.trim() || "";
+    // Нормализация данных
+    const normalizedName = name.trim();
+    const normalizedEmail = email.trim();
+    const normalizedPhone = phone.trim();
+    const normalizedRole = role.trim();
+    const normalizedComment = comment.trim();
 
-    // Логируем данные для отладки
-    console.log("[FeedbackForm] Form submission attempt:", {
-      hasName: !!name,
-      hasEmail: !!email,
-      hasRole: !!role,
-      nameLength: name.length,
-      emailLength: email.length,
-      roleLength: role.length,
-      rawName: nameInput?.value,
-      rawEmail: emailInput?.value,
-      rawRole: roleSelect?.value,
-    });
-
-    // СТРОГАЯ валидация обязательных полей на клиенте
-    if (!name || name.length === 0) {
+    // ЖЁСТКАЯ валидация обязательных полей
+    if (!normalizedName || normalizedName.length === 0) {
       console.error("[FeedbackForm] Validation failed: name is empty");
       setError("Пожалуйста, укажите ваше имя.");
-      nameInput?.focus();
       return;
     }
 
-    if (!email || email.length === 0) {
+    if (normalizedName.length < 2) {
+      console.error("[FeedbackForm] Validation failed: name is too short");
+      setError("Имя должно содержать минимум 2 символа.");
+      return;
+    }
+
+    if (!normalizedEmail || normalizedEmail.length === 0) {
       console.error("[FeedbackForm] Validation failed: email is empty");
       setEmailError("Введите адрес электронной почты.");
-      emailInput?.focus();
       return;
     }
 
-    // Валидация email на клиенте
-    if (!isValidEmail(email)) {
-      console.error("[FeedbackForm] Validation failed: email is invalid", email);
+    if (!isValidEmail(normalizedEmail)) {
+      console.error("[FeedbackForm] Validation failed: email is invalid", normalizedEmail);
       setEmailError("Введите корректный адрес электронной почты.");
-      emailInput?.focus();
       return;
     }
 
-    if (!role || role.length === 0) {
+    if (!normalizedRole || normalizedRole.length === 0) {
       console.error("[FeedbackForm] Validation failed: role is empty");
       setError("Пожалуйста, выберите вашу роль.");
-      roleSelect?.focus();
       return;
     }
 
-    // Валидация телефона (необязательное поле, но если заполнено — проверим)
-    if (phone) {
-      const digits = phone.replace(/[^\d+]/g, "");
-      // допускаем +7/8 и 10-12 цифр
-      if (!/^\+?\d{10,12}$/.test(digits)) {
-        setPhoneError("Введите корректный номер телефона.");
-        return;
-      }
+    if (!roles.includes(normalizedRole as typeof roles[number])) {
+      console.error("[FeedbackForm] Validation failed: role is invalid", normalizedRole);
+      setError("Выберите корректную роль из списка.");
+      return;
+    }
+
+    // Валидация телефона (если указан)
+    if (normalizedPhone && !isValidPhone(normalizedPhone)) {
+      console.error("[FeedbackForm] Validation failed: phone is invalid", normalizedPhone);
+      setPhoneError("Введите корректный номер телефона (+7XXXXXXXXXX или 10-12 цифр).");
+      setState("idle");
+      return;
+    }
+
+    // АБСОЛЮТНАЯ ФИНАЛЬНАЯ ПРОВЕРКА перед отправкой
+    const finalNameCheck = normalizedName.trim();
+    const finalEmailCheck = normalizedEmail.trim();
+    const finalRoleCheck = normalizedRole.trim();
+
+    if (finalNameCheck.length === 0 || 
+        finalNameCheck.length < 2 ||
+        finalEmailCheck.length === 0 || 
+        !isValidEmail(finalEmailCheck) ||
+        finalRoleCheck.length === 0 ||
+        !roles.includes(finalRoleCheck as typeof roles[number])) {
+      console.error("[FeedbackForm] CRITICAL: Final validation failed", {
+        nameLength: finalNameCheck.length,
+        emailLength: finalEmailCheck.length,
+        roleLength: finalRoleCheck.length,
+        nameValue: finalNameCheck,
+        emailValue: finalEmailCheck,
+        roleValue: finalRoleCheck,
+      });
+      setError("Ошибка: не все обязательные поля заполнены корректно. Пожалуйста, проверьте форму.");
+      setState("idle");
+      return;
     }
 
     try {
-      // A/B конверсия: фиксируем стандартным событием, чтобы было видно в статистике
+      // A/B конверсия
       if (abExperimentId) {
-        trackEvent("ab_conversion", { experimentId: abExperimentId, variant: abVariant ?? "form", placement: abPlacement ?? "hero_right" }).catch(() => {});
+        trackEvent("ab_conversion", { 
+          experimentId: abExperimentId, 
+          variant: abVariant ?? "form", 
+          placement: abPlacement ?? "hero_right" 
+        }).catch(() => {});
       }
-      // Лог клика по кнопке отправки формы
+      
+      // Логирование события
       logEvent("нажал «Отправить форму» в блоке заявки").catch(() => {});
 
       setState("submitting");
       lastSubmitTime = now;
       const clientId = ensureClientId();
-      
-      // АБСОЛЮТНАЯ ФИНАЛЬНАЯ ПРОВЕРКА перед отправкой
-      const finalNameCheck = name.trim();
-      const finalEmailCheck = email.trim();
-      const finalRoleCheck = role.trim();
 
-      if (finalNameCheck.length === 0 || 
-          finalEmailCheck.length === 0 || 
-          !isValidEmail(finalEmailCheck) ||
-          finalRoleCheck.length === 0) {
-        console.error("[FeedbackForm] CRITICAL: Attempted to submit with empty/invalid required fields", {
-          nameLength: finalNameCheck.length,
-          emailLength: finalEmailCheck.length,
-          roleLength: finalRoleCheck.length,
-          nameValue: name,
-          emailValue: email,
-          roleValue: role,
-        });
-        setError("Ошибка: не все обязательные поля заполнены корректно. Пожалуйста, проверьте форму.");
-        setState("idle");
-        return;
-      }
-
+      // Формируем payload для отправки
       const payloadToSend = {
         name: finalNameCheck,
         email: finalEmailCheck,
-        phone: phone?.trim() || undefined,
+        phone: normalizedPhone || undefined,
         role: finalRoleCheck,
-        comment: comment?.trim() || undefined,
+        comment: normalizedComment || undefined,
         clientId,
         sessionId,
       };
@@ -194,7 +231,7 @@ export const FeedbackForm = ({ abExperimentId, abPlacement, abVariant }: Feedbac
         body: JSON.stringify(payloadToSend),
       });
 
-      // Читаем ответ один раз
+      // Читаем ответ
       const responseData = await response.json().catch(() => ({}));
 
       if (!response.ok) {
@@ -207,7 +244,7 @@ export const FeedbackForm = ({ abExperimentId, abPlacement, abVariant }: Feedbac
         } else if (response.status === 502) {
           setError("Не удалось связаться с сервером обработки. Попробуйте ещё раз позднее.");
         } else if (response.status === 504) {
-          setError("Сервер долго не отвечает. Попробуйте ещё раз." );
+          setError("Сервер долго не отвечает. Попробуйте ещё раз.");
         } else {
           setError(`Ошибка сервера (${response.status}). Попробуйте ещё раз через минуту.`);
         }
@@ -215,15 +252,22 @@ export const FeedbackForm = ({ abExperimentId, abPlacement, abVariant }: Feedbac
         return;
       }
 
-      // Проверяем, что ответ действительно успешный
+      // Проверяем успешность ответа
       if (responseData.ok !== true) {
         setError("Неожиданный ответ от сервера. Попробуйте ещё раз.");
         setState("idle");
         return;
       }
 
+      // Успешная отправка
       setState("success");
-      formElement.reset();
+      
+      // Очищаем форму
+      setName("");
+      setEmail("");
+      setPhone("");
+      setRole(roles[0]);
+      setComment("");
     } catch (cause) {
       console.error("[FeedbackForm] Submit error:", cause);
       const errorMessage = cause instanceof Error ? cause.message : String(cause);
@@ -251,6 +295,11 @@ export const FeedbackForm = ({ abExperimentId, abPlacement, abVariant }: Feedbac
           onClick={() => {
             logEvent("нажал «Отправить новый запрос» после формы").catch(() => {});
             setState("idle");
+            setName("");
+            setEmail("");
+            setPhone("");
+            setRole(roles[0]);
+            setComment("");
           }}
         >
           Отправить новый запрос
@@ -269,6 +318,7 @@ export const FeedbackForm = ({ abExperimentId, abPlacement, abVariant }: Feedbac
       <p className="mt-2 text-sm text-white/70">
         Оставьте контакт — обсудим процесс и предложим план внедрения
       </p>
+      
       {/* Honeypot поле (скрыто от пользователей, но видимо ботам) */}
       <input
         ref={honeypotRef}
@@ -279,32 +329,31 @@ export const FeedbackForm = ({ abExperimentId, abPlacement, abVariant }: Feedbac
         style={{ position: "absolute", left: "-9999px", opacity: 0, pointerEvents: "none" }}
         aria-hidden="true"
       />
+
       <div className="mt-6 grid gap-5 md:grid-cols-2">
         <label className="flex flex-col gap-2 text-sm">
-          Имя
+          Имя *
           <input
             name="name"
+            type="text"
+            required
+            minLength={2}
+            value={name}
+            onChange={(e) => handleNameChange(e.target.value)}
             className="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-white placeholder:text-white/40 focus:border-neo-electric focus:outline-none"
             placeholder="Иван"
             aria-required="true"
-            onKeyDown={(e) => {
-              // Предотвращаем отправку формы по Enter в поле имени, если оно пустое
-              if (e.key === "Enter") {
-                const input = e.currentTarget;
-                if (!input.value || input.value.trim().length === 0) {
-                  e.preventDefault();
-                  setError("Пожалуйста, укажите ваше имя.");
-                  input.focus();
-                }
-              }
-            }}
           />
         </label>
+        
         <label className="flex flex-col gap-2 text-sm">
-          Рабочая почта
+          Рабочая почта *
           <input
             type="email"
             name="email"
+            required
+            value={email}
+            onChange={(e) => handleEmailChange(e.target.value)}
             className={`rounded-2xl border px-4 py-3 text-white placeholder:text-white/40 focus:border-neo-electric focus:outline-none ${
               emailError
                 ? "border-red-400 bg-white/10"
@@ -314,20 +363,6 @@ export const FeedbackForm = ({ abExperimentId, abPlacement, abVariant }: Feedbac
             aria-required="true"
             aria-invalid={emailError ? "true" : "false"}
             aria-describedby={emailError ? "email-error" : undefined}
-            onChange={() => {
-              if (emailError) setEmailError(null);
-            }}
-            onKeyDown={(e) => {
-              // Предотвращаем отправку формы по Enter в поле email, если оно пустое
-              if (e.key === "Enter") {
-                const input = e.currentTarget;
-                if (!input.value || input.value.trim().length === 0) {
-                  e.preventDefault();
-                  setEmailError("Введите адрес электронной почты.");
-                  input.focus();
-                }
-              }
-            }}
           />
           {emailError && (
             <span id="email-error" className="text-xs text-red-300" role="alert">
@@ -335,20 +370,20 @@ export const FeedbackForm = ({ abExperimentId, abPlacement, abVariant }: Feedbac
             </span>
           )}
         </label>
+        
         <label className="flex flex-col gap-2 text-sm">
           Телефон (по желанию)
           <input
             type="tel"
             name="phone"
+            value={phone}
+            onChange={(e) => handlePhoneChange(e.target.value)}
             className={`rounded-2xl border px-4 py-3 text-white placeholder:text-white/40 focus:border-neo-electric focus:outline-none ${
               phoneError ? "border-red-400 bg-white/10" : "border-white/10 bg-white/10"
             }`}
             placeholder="+7 999 123‑45‑67"
             aria-invalid={phoneError ? "true" : "false"}
             aria-describedby={phoneError ? "phone-error" : undefined}
-            onChange={() => {
-              if (phoneError) setPhoneError(null);
-            }}
           />
           {phoneError && (
             <span id="phone-error" className="text-xs text-red-300" role="alert">
@@ -356,41 +391,52 @@ export const FeedbackForm = ({ abExperimentId, abPlacement, abVariant }: Feedbac
             </span>
           )}
         </label>
+        
         <label className="flex flex-col gap-2 text-sm">
-          Ваша роль
+          Ваша роль *
           <select
             name="role"
-            defaultValue={roles[0]}
+            required
+            value={role}
+            onChange={(e) => handleRoleChange(e.target.value)}
             className="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-white focus:border-neo-electric focus:outline-none"
+            aria-required="true"
           >
-            {roles.map((role) => (
-              <option key={role} value={role}>
-                {role}
+            {roles.map((roleOption) => (
+              <option key={roleOption} value={roleOption}>
+                {roleOption}
               </option>
             ))}
           </select>
         </label>
+        
         <label className="flex flex-col gap-2 text-sm md:col-span-2">
           Расскажите о задаче
           <textarea
             name="comment"
             rows={4}
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
             className="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-white placeholder:text-white/40 focus:border-neo-electric focus:outline-none"
             placeholder="Например: автоматизировать подбор КТРУ; подключить отдел закупок и ИТ"
           />
         </label>
       </div>
+      
       {error && (
         <p className="mt-4 text-sm text-red-300" role="alert" aria-live="polite">
           {error}
         </p>
       )}
+      
       <button
         type="submit"
         disabled={state === "submitting"}
         className="group relative mt-6 inline-flex items-center justify-center gap-2 overflow-hidden rounded-full bg-gradient-cta px-10 py-4 text-base font-bold text-neo-night shadow-[0_0_30px_rgba(255,95,141,0.5)] transition-all hover:-translate-y-1 hover:shadow-[0_0_40px_rgba(255,95,141,0.7)] hover:scale-105 disabled:cursor-progress disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:scale-100"
       >
-        <span className="relative z-10">{state === "submitting" ? "Отправляем…" : "🚀 Связаться со мной"}</span>
+        <span className="relative z-10">
+          {state === "submitting" ? "Отправляем…" : "🚀 Связаться со мной"}
+        </span>
         {state !== "submitting" && (
           <div className="absolute inset-0 animate-pulse bg-gradient-to-r from-transparent via-white/20 to-transparent" />
         )}
@@ -398,4 +444,3 @@ export const FeedbackForm = ({ abExperimentId, abPlacement, abVariant }: Feedbac
     </form>
   );
 };
-
