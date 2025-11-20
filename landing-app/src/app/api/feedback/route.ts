@@ -182,12 +182,15 @@ export async function POST(request: Request) {
     );
   }
 
-  // Логирование тела запроса для отладки пустых заявок (только если что-то пошло не так, или всегда, если есть подозрения)
-  if (request.method === "POST") {
-    console.log(`[Feedback:${requestId}] Incoming request body preview:`, {
-      raw: JSON.stringify(rawData).slice(0, 500)
-    });
-  }
+  // ДЕТАЛЬНОЕ логирование ВСЕХ входящих запросов для поиска источника пустых заявок
+  console.log(`[Feedback:${requestId}] ===== ВХОДЯЩИЙ ЗАПРОС =====`);
+  console.log(`[Feedback:${requestId}] Headers:`, {
+    'user-agent': userAgent,
+    'referer': referer,
+    'x-forwarded-for': clientIp,
+  });
+  console.log(`[Feedback:${requestId}] Raw body:`, JSON.stringify(rawData, null, 2));
+  console.log(`[Feedback:${requestId}] =========================`);
 
   // Валидация
   const validation = validatePayload(rawData);
@@ -308,18 +311,30 @@ export async function POST(request: Request) {
   }
 
   // КРИТИЧЕСКАЯ ПРОВЕРКА: блокируем отправку если данные пустые, содержат только дефисы или "undefined"
-  const invalidValues = ["-", "—", "_", "нет", "empty", "undefined", "null"];
+  const invalidValues = ["-", "—", "_", "нет", "empty", "undefined", "null", ""];
   const isNameInvalid = invalidValues.includes(finalCheck.name.toLowerCase()) || finalCheck.name.length < 2;
   const isEmailInvalid = invalidValues.includes(finalCheck.email.toLowerCase()) || finalCheck.email.length < 5;
   
   if (isNameInvalid || isEmailInvalid || finalCheck.role === "-") {
-    console.error(`[Feedback:${requestId}] BLOCKED: Invalid/Empty data detected`, {
-      name: finalCheck.name,
-      email: finalCheck.email,
-      role: finalCheck.role,
-      ip: clientIp,
-      userAgent: userAgent.slice(0, 100),
+    console.error(`[Feedback:${requestId}] ===== БЛОКИРОВКА ПУСТОЙ ЗАЯВКИ =====`);
+    console.error(`[Feedback:${requestId}] Причина блокировки:`, {
+      nameInvalid: isNameInvalid,
+      emailInvalid: isEmailInvalid,
+      roleInvalid: finalCheck.role === "-",
     });
+    console.error(`[Feedback:${requestId}] Данные:`, {
+      name: `"${finalCheck.name}"`,
+      email: `"${finalCheck.email}"`,
+      role: `"${finalCheck.role}"`,
+      nameLength: finalCheck.name.length,
+      emailLength: finalCheck.email.length,
+    });
+    console.error(`[Feedback:${requestId}] Источник:`, {
+      ip: clientIp,
+      userAgent: userAgent,
+      referer: referer,
+    });
+    console.error(`[Feedback:${requestId}] ====================================`);
     return NextResponse.json(
       { error: "Invalid form data" },
       { status: 400 }
