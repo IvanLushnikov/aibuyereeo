@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 const KTRU_API_URL = "http://ktru.services.persis.ru/api/Ktru/GetKtru";
 const DEFAULT_PARAMS = {
   IncludeChars: "true",
-  Limit: "5", // Уменьшено до 5 для экономии токенов - пагинация по запросу
+  Limit: "15", // 15 наименований с обязательными характеристиками
   Page: "1",
   WithActualKtrusOnly: "true",
 };
@@ -351,7 +351,7 @@ export async function POST(request: Request) {
       coerceNumber(url.searchParams.get("limit")) ??
       5;
     const page = Math.max(1, Math.floor(pageParam));
-    const limit = Math.max(1, Math.min(20, Math.floor(limitParam))); // Ограничиваем максимум 20
+    const limit = Math.max(1, Math.min(15, Math.floor(limitParam))); // Ограничиваем максимум 15 позиций
 
     // Ключ кэша включает страницу для правильного кэширования
     const cacheKey = `lookup:${productName.toLowerCase().trim()}:page:${page}:limit:${limit}`;
@@ -397,6 +397,9 @@ export async function POST(request: Request) {
             (item) => matchesTokens(item.name, tokens) || matchesTokens(item.okpdName, tokens),
           );
     const itemsToReturn = filtered.length ? filtered : transformed;
+
+    // Для plain формата возвращаем до 15 наименований с обязательными характеристиками
+    // formatPlain уже возвращает только обязательные характеристики (includeOptional: false)
 
     // 1. Plain format (summary for search)
     if (shape === "plain") {
