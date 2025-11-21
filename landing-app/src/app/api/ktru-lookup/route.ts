@@ -105,7 +105,12 @@ function buildQuery(productName: string, page: number = 1, limit: number = 5) {
 function formatValue(value?: KtruValue | null) {
   if (!value) return null;
   if (value.текстовоеОписание) {
-    return value.текстовоеОписание.trim();
+    const text = value.текстовоеОписание.trim();
+    // Если значение содержит несколько вариантов через ";", разбиваем их
+    if (text.includes(";")) {
+      return text.split(";").map(v => v.trim()).filter(Boolean);
+    }
+    return text;
   }
 
   const min = value.минимальноеЗначение;
@@ -115,7 +120,7 @@ function formatValue(value?: KtruValue | null) {
     return `${min}-${max}`; // Заменили тире на дефис для экономии
   }
   if (min !== undefined && min !== null) {
-    return `>${min}`; // Заменили "≥ " на ">" для краткости
+    return `≥${min}`; // Используем ≥ для точности (27 дюймов подходит для ≥27)
   }
   if (max !== undefined && max !== null) {
     return `<${max}`; // Заменили "≤ " на "<" для краткости
@@ -124,9 +129,19 @@ function formatValue(value?: KtruValue | null) {
 }
 
 function normalizeCharacteristic(characteristic: KtruCharacteristic) {
-  const values = (characteristic.значения ?? [])
+  const rawValues = (characteristic.значения ?? [])
     .map((value) => formatValue(value))
-    .filter((value): value is string => Boolean(value));
+    .filter((value) => value !== null);
+
+  // Разворачиваем массивы (если formatValue вернул массив из-за ";")
+  const values: string[] = [];
+  for (const value of rawValues) {
+    if (Array.isArray(value)) {
+      values.push(...value);
+    } else if (typeof value === "string") {
+      values.push(value);
+    }
+  }
 
   if (!values.length) {
     return null;
@@ -224,7 +239,7 @@ function formatPlain(
   if (requiredList.length > 0) {
      const params = requiredList.map(c => {
         const shortTitle = shortenCharacteristicTitle(c.title);
-        return `${shortTitle}: ${c.values.join(",")}`;
+        return `${shortTitle}: ${c.values.join(", ")}`; // Пробелы после запятых для читаемости
      }).join(" | ");
      parts.push(params);
   } else {
