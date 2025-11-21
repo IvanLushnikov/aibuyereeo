@@ -336,11 +336,27 @@ export class N8NClient {
           if (output && typeof output === "object") {
             // Если output тоже массив, берем первый элемент
             if (Array.isArray(output) && output.length > 0) {
-              rawReply = output[0].reply || output[0].answer || output[0].text || output[0].message || null;
+              // AI Agent возвращает массив, берем первый элемент
+              const firstItem = output[0];
+              if (typeof firstItem === "string") {
+                rawReply = firstItem; // Если output[0] - строка
+              } else {
+                rawReply = firstItem.reply || firstItem.answer || firstItem.text || firstItem.message || firstItem.output || null;
+              }
             } else if (output && typeof output === "object") {
-              rawReply = output.reply || output.answer || output.text || output.message || null;
+              // Если output - объект
+              if (typeof output === "string") {
+                rawReply = output; // Если output - строка
+              } else {
+                rawReply = output.reply || output.answer || output.text || output.message || output.output || null;
+              }
             }
           }
+        }
+        
+        // Если все еще не нашли, проверяем напрямую output как строку (AI Agent может вернуть строку в output)
+        if (!rawReply && (data as any).output && typeof (data as any).output === "string") {
+          rawReply = (data as any).output;
         }
       }
       
