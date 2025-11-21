@@ -279,9 +279,11 @@ export class N8NClient {
       const responseText = await response.text();
       
       // Детальное логирование для отладки
-      console.log("[N8NClient] Ответ от n8n (первые 500 символов):", responseText.slice(0, 500));
+      console.log("[N8NClient] ===== ОТВЕТ ОТ N8N =====");
+      console.log("[N8NClient] Полный ответ (первые 1000 символов):", responseText.slice(0, 1000));
       console.log("[N8NClient] Длина ответа:", responseText.length);
       console.log("[N8NClient] Content-Type:", response.headers.get("content-type"));
+      console.log("[N8NClient] Status:", response.status);
       
       // Проверка на пустой ответ
       if (!responseText || responseText.trim().length === 0) {
@@ -297,10 +299,16 @@ export class N8NClient {
       
       try {
         data = JSON.parse(responseText);
-        console.log("[N8NClient] Распарсенный JSON:", JSON.stringify(data).slice(0, 500));
+        console.log("[N8NClient] ===== РАСПАРСЕННЫЙ JSON =====");
+        console.log("[N8NClient] Полная структура:", JSON.stringify(data, null, 2).slice(0, 2000));
+        console.log("[N8NClient] Ключи в корне:", Object.keys(data || {}));
+        if (data && typeof data === "object" && !Array.isArray(data)) {
+          console.log("[N8NClient] Типы значений:", Object.entries(data).map(([k, v]) => `${k}: ${typeof v}`).join(", "));
+        }
       } catch (parseError) {
-        console.error("[N8NClient] Ошибка парсинга ответа от n8n:", parseError);
-        console.error("[N8NClient] Сырой ответ:", responseText.slice(0, 500));
+        console.error("[N8NClient] ===== ОШИБКА ПАРСИНГА =====");
+        console.error("[N8NClient] Ошибка:", parseError);
+        console.error("[N8NClient] Сырой ответ:", responseText.slice(0, 1000));
         throw new Error(`n8n вернул не-JSON ответ. Ответ: ${responseText.slice(0, 200)}`);
       }
 
@@ -360,7 +368,13 @@ export class N8NClient {
         }
       }
       
-      console.log("[N8NClient] Извлеченный reply:", rawReply ? rawReply.slice(0, 200) : "null");
+      console.log("[N8NClient] ===== ИЗВЛЕЧЕНИЕ REPLY =====");
+      console.log("[N8NClient] Извлеченный reply:", rawReply ? rawReply.slice(0, 500) : "null");
+      console.log("[N8NClient] Тип reply:", typeof rawReply);
+      if (!rawReply) {
+        console.error("[N8NClient] НЕ УДАЛОСЬ ИЗВЛЕЧЬ REPLY!");
+        console.error("[N8NClient] Полная структура данных:", JSON.stringify(data, null, 2));
+      }
 
       // Проверяем, что ответ валиден
       if (!rawReply || typeof rawReply !== "string") {
