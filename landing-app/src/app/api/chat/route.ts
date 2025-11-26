@@ -464,13 +464,13 @@ export async function POST(request: Request) {
         n8nResponseStatus = 413;
       } else if (n8nError.includes("404") || n8nErrorLower.includes("not found") || n8nErrorLower.includes("не найден")) {
         replyText = isInitial
-          ? "ИИ‑бот временно недоступен. Обратитесь к администратору."
-          : "ИИ‑бот не настроен: Workflow не найден в n8n. Проверьте URL webhook.";
+          ? "ИИ‑бот временно недоступен. Попробуйте открыть чат через минуту."
+          : "ИИ‑бот временно недоступен. Попробуйте позже.";
         n8nResponseStatus = 404;
       } else if (n8nError.includes("500") || n8nErrorLower.includes("server error")) {
         replyText = isInitial
           ? "ИИ‑бот временно недоступен. Попробуйте открыть чат через минуту."
-          : "ИИ‑бот временно недоступен. Проверьте настройки workflow в n8n.";
+          : "ИИ‑бот временно недоступен. Попробуйте позже.";
         n8nResponseStatus = 500;
       } else {
         // Для неизвестных ошибок при инициализации показываем более дружелюбное сообщение
