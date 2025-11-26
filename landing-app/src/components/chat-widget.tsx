@@ -551,21 +551,7 @@ export const ChatWidget = ({ mode = "drawer", defaultOpen = false, hideFloatingB
     setIsThinking(true);
 
     try {
-      // Фильтруем fallback и welcome сообщения из истории перед отправкой
-      // Это предотвратит отправку ошибок и приветствий в n8n
-      const cleanHistory = updatedHistory
-        .filter((m) => {
-          // Пропускаем сообщения агента, которые являются fallback или welcome сообщениями
-          if (m.role === "agent") {
-            if (m.content === fallbackReply || m.content === welcomeMessage) {
-              return false;
-            }
-          }
-          return true;
-        })
-        .map((m) => ({ role: m.role, content: m.content }))
-        .slice(-8); // Context Window Length: 8 сообщений
-
+      // Simple Memory в n8n хранит историю по clientId, поэтому не передаем history
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -573,7 +559,6 @@ export const ChatWidget = ({ mode = "drawer", defaultOpen = false, hideFloatingB
           clientId: id,
           sessionId,
           message: value,
-          history: cleanHistory,
           meta: { source: "landing", openedAt: messages[0]?.timestamp },
         }),
         signal: controller.signal,

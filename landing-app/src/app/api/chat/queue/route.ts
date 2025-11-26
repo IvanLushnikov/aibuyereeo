@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 
 // Хранилище очереди (в продакшене использовать Redis/БД)
+// Simple Memory в n8n хранит историю по clientId, поэтому history не передаем
 type QueueItem = {
   id: string;
   clientId: string;
   message: string;
-  history: any[];
   meta: any;
   receivedAt: string;
   processing: boolean; // Изменено: вместо processed используем processing для отслеживания статуса
@@ -112,7 +112,6 @@ export async function POST(request: Request) {
     id: `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
     clientId: body.clientId || "unknown",
     message: body.message || "",
-    history: body.history || [],
     meta: body.meta || {},
     receivedAt: body.meta?.receivedAt || new Date().toISOString(),
     processing: false,

@@ -87,14 +87,7 @@ export async function POST(request: Request) {
     let message = String(body?.message ?? "").trim();
     // Ограничиваем длину и удаляем управляющие символы
     message = message.slice(0, 2000).replace(/[\x00-\x1F\x7F]/g, '');
-    const history: ChatHistoryItem[] = Array.isArray(body?.history)
-      ? (body.history as ChatHistoryItem[])
-          .filter((item: ChatHistoryItem) => item && item.content && item.role)
-          .map((item: ChatHistoryItem) => ({
-            role: item.role === "agent" ? "agent" : "user",
-            content: String(item.content).slice(0, 4000),
-          }))
-      : [];
+    // Simple Memory в n8n хранит историю по clientId, поэтому history не передаем
     meta = typeof body?.meta === "object" && body?.meta ? (body.meta as Record<string, unknown>) : undefined;
     const isInitial = meta?.isInitial === true;
 
@@ -140,7 +133,7 @@ export async function POST(request: Request) {
       );
     }
 
-    console.log(`[API] Получено сообщение от ${clientId}:`, { messageLength: message.length, hasHistory: history.length > 0, isInitial });
+    console.log(`[API] Получено сообщение от ${clientId}:`, { messageLength: message.length, isInitial });
     // Логируем только если это не инициализация или есть текст сообщения
     if (!isInitial || message) {
       await appendChatLog({
@@ -164,7 +157,6 @@ export async function POST(request: Request) {
         body: JSON.stringify({
           clientId,
           message,
-          history,
           meta: { ...meta, receivedAt: receivedAt.toISOString() },
         }),
       });
@@ -291,13 +283,10 @@ export async function POST(request: Request) {
     const timeoutMs = Number(process.env.CHAT_TIMEOUT_MS ?? 600000);
 
     // Валидация payload перед отправкой в n8n
+    // Simple Memory в n8n хранит историю по clientId, поэтому history не передаем
     const n8nPayloadSchema = z.object({
       clientId: z.string().min(1),
       message: z.string().max(2000),
-      history: z.array(z.object({
-        role: z.enum(['user', 'agent']),
-        content: z.string().max(4000),
-      })).max(8), // Context Window Length: 8 сообщений
       meta: z.record(z.string(), z.unknown()).optional(),
       receivedAt: z.string().datetime(),
     });
@@ -307,7 +296,6 @@ export async function POST(request: Request) {
       validatedPayload = n8nPayloadSchema.parse({
         clientId,
         message,
-        history,
         meta,
         receivedAt: receivedAt.toISOString(),
       });
@@ -349,7 +337,6 @@ export async function POST(request: Request) {
       requestId,
       webhookUrl: webhookUrl.replace(/\/[^\/]*$/, '/***'),
       messageLength: message.length,
-      historyLength: history.length,
       payloadSizeBytes: payloadSize,
       payloadSizeKB: (payloadSize / 1024).toFixed(2),
       isInitial,
